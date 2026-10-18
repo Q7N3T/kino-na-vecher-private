@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Кино на вечер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#17121A;--surface:#221A26;--line:#3A2E3F;
+  --text:#F2EAE0;--muted:#A3959F;--accent:#E9B949;--accent-ink:#2A1E05;
+  --display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#17121A;--text:#F2EAE0}}
+:root[data-theme="dark"]{--bg:#17121A;--text:#F2EAE0}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;color:inherit}
+img{max-width:100%;display:block}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+header.top{display:flex;justify-content:space-between;align-items:center;padding:20px 0}
+.logo{font-family:var(--display);font-weight:700;font-size:15px;text-decoration:none;display:flex;align-items:center;gap:10px}
+.logo i{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+.now{color:var(--muted);font-size:14px}
+
+.hero{padding:48px 0 32px}
+.sentence{font-family:var(--display);font-weight:500;font-size:clamp(28px,5.2vw,60px);line-height:1.18;margin:0;max-width:22ch;letter-spacing:-.01em}
+.slot{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:var(--accent);border-bottom:3px solid var(--accent);line-height:1.05}
+.slot:hover{color:#F7D27A;border-color:#F7D27A}
+.pickers{display:grid;gap:18px;margin-top:36px}
+.picker-label{font-size:14px;color:var(--muted);margin:0 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:8px 16px;font-size:15px;cursor:pointer;transition:background .15s,border-color .15s}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+
+.today{display:none;margin:28px 0 0;padding:14px 18px;border:1px solid var(--accent);border-radius:12px;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.today.on{display:flex}
+.today a{color:var(--accent);font-weight:500}
+
+.bar{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;padding:28px 0 18px;border-top:1px solid var(--line);margin-top:36px}
+.count{margin:0;font-size:18px}
+.count span{color:var(--muted)}
+.btn{border:0;border-radius:999px;padding:12px 22px;font-weight:500;font-size:15px;cursor:pointer;background:var(--accent);color:var(--accent-ink);text-decoration:none;display:inline-block}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn:hover{filter:brightness(1.08)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:32px 20px;padding-bottom:64px}
+.card{text-decoration:none;display:block}
+.card .poster{transition:transform .2s ease}
+.card:hover .poster{transform:translateY(-4px)}
+.card h3{font-size:16px;font-weight:500;margin:12px 0 2px;line-height:1.3}
+.card p{margin:0;color:var(--muted);font-size:14px}
+.card .end{color:var(--text)}
+.poster{aspect-ratio:2/3;width:100%;object-fit:cover;border-radius:6px;background:var(--surface)}
+.poster.big{border-radius:10px}
+.rest h2{font-family:var(--display);font-weight:500;font-size:18px;margin:0 0 6px}
+.rest p.sub{color:var(--muted);margin:0 0 20px;font-size:15px}
+.rest .grid .card{opacity:.75}
+.rest .grid .card:hover{opacity:1}
+
+.empty{padding:40px 0 64px;max-width:48ch}
+.empty h2{font-family:var(--display);font-weight:500;font-size:24px;margin:0 0 8px}
+.empty p{color:var(--muted);margin:0 0 20px}
+
+.back{display:inline-flex;gap:8px;align-items:center;text-decoration:none;color:var(--muted);font-size:15px;padding:16px 0 8px}
+.back:hover{color:var(--text)}
+.film{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:56px;padding:24px 0 48px;align-items:start}
+.film aside{position:sticky;top:24px}
+.film h1{font-family:var(--display);font-weight:700;font-size:clamp(32px,4.6vw,54px);line-height:1.08;margin:0 0 6px;letter-spacing:-.01em}
+.orig{color:var(--muted);margin:0 0 24px;font-size:17px}
+.facts{display:flex;flex-wrap:wrap;gap:12px 28px;margin:0 0 28px;padding:0}
+.facts div{display:flex;flex-direction:column}
+.facts dt{font-size:13px;color:var(--muted)}
+.facts dd{margin:0;font-weight:500}
+.clock{border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:0 0 32px;display:flex;gap:16px;align-items:center}
+.clock b{font-family:var(--display);font-weight:500;font-size:28px;color:var(--accent);line-height:1}
+.clock span{color:var(--muted);font-size:15px;line-height:1.4}
+.logline{font-size:21px;line-height:1.45;max-width:46ch;margin:0 0 20px}
+.syn{max-width:62ch;margin:0 0 28px;color:#D9CFC6}
+.why{max-width:62ch;margin:0 0 28px;padding-left:16px;border-left:3px solid var(--accent)}
+.why p{margin:0}
+.why small{display:block;color:var(--muted);font-size:13px;margin-bottom:2px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 32px}
+.tag{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;color:var(--muted)}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 40px}
+.block{margin:0 0 32px;max-width:62ch}
+.block h2{font-size:15px;font-weight:500;color:var(--muted);margin:0 0 10px}
+.cast{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 24px}
+.cast li span{display:block;color:var(--muted);font-size:14px}
+.scores{display:flex;gap:28px}
+.scores b{font-family:var(--display);font-weight:500;font-size:26px;display:block;line-height:1.1}
+.scores span{color:var(--muted);font-size:14px}
+.awards{list-style:none;margin:0;padding:0}
+.awards li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:16px}
+.awards li:last-child{border-bottom:0}
+.awards span{color:var(--muted);font-size:14px;white-space:nowrap}
+.links{display:flex;gap:20px;flex-wrap:wrap}
+.links a{color:var(--accent)}
+.more{border-top:1px solid var(--line);padding:32px 0 80px}
+.more h2{font-family:var(--display);font-weight:500;font-size:22px;margin:0 0 20px}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--text);color:var(--bg);padding:12px 20px;border-radius:999px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+footer{color:var(--muted);font-size:13px;padding:0 0 32px}
+
+@media (max-width:760px){
+  .wrap{padding:0 18px}
+  .hero{padding:28px 0 20px}
+  .film{grid-template-columns:1fr;gap:28px}
+  .film aside{position:static;max-width:260px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 14px}
+  .now{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="logo" href="#"><i aria-hidden="true"></i>Кино на вечер</a>
+    <span class="now" id="now"></span>
+  </header>
+  <main id="app"></main>
+  <footer>Данные о фильмах: Кинопоиск, IMDb и материалы фестивалей.</footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const FILMS = [{"id": "6553389", "t": "Новая волна", "o": "Nouvelle Vague", "y": 2025, "min": 105, "genres": ["драма", "комедия", "биографический"], "countries": ["Франция", "США"], "age": "18+", "d": ["Ричард Линклейтер"], "m": ["laugh", "inspire"], "log": "Молодой Жан-Люк Годар снимает свой первый полнометражный фильм и проверяет на практике, какие правила кино можно нарушить.", "syn": "Париж, конец пятидесятых. Кинокритик Жан-Люк Годар собирается перейти от разговоров о кино к собственному полнометражному дебюту. Его друзья уже снимают, а он намерен доказать, что фильм можно создать по другим правилам: быстрее, свободнее и прямо на городских улицах. Для будущей картины «На последнем дыхании» сходятся американская актриса Джин Сиберг, начинающий Жан-Поль Бельмондо и небольшая команда, которой приходится привыкать к неожиданным решениям режиссёра. Подготовка постоянно перетекает в импровизацию, рабочие споры — в беседы об искусстве, а повседневный Париж становится съёмочной площадкой. История следит за людьми, ещё не знающими, какое место их работа займёт в истории кинематографа. На первом плане здесь удовольствие от совместного поиска, молодая самоуверенность и непростой процесс превращения дерзкой идеи в реальный фильм.", "mood": "Лёгкое, увлечённое и ироничное; за игровым тоном чувствуется тревога дебюта.", "themes": ["свобода творчества", "кинематограф и его история", "дружба и сотрудничество", "молодость и амбиции"], "cast": [{"n": "Гийом Марбек", "r": "Жан-Люк Годар"}, {"n": "Зои Дойч", "r": "Джин Сиберг"}, {"n": "Обри Дюллен", "r": "Жан-Поль Бельмондо"}, {"n": "Адриен Руйяр", "r": "Франсуа Трюффо"}, {"n": "Антуан Бессон", "r": "Клод Шаброль"}], "kp": 7.6, "imdb": 7.3, "aw": [{"y": 2026, "e": "Сезар", "c": "Лучшая режиссура", "w": "win"}, {"y": 2026, "e": "Сезар", "c": "Лучшая операторская работа", "w": "win"}, {"y": 2026, "e": "Сезар", "c": "Лучший монтаж", "w": "win"}, {"y": 2026, "e": "Сезар", "c": "Лучшие костюмы", "w": "win"}], "kpurl": "https://www.kinopoisk.ru/film/6553389/", "trailer": "https://en.unifrance.org/movie/59185/nouvelle-vague"}, {"id": "1040690", "t": "Середина 90-х", "o": "Mid90s", "y": 2018, "min": 85, "genres": ["драма", "комедия"], "countries": ["США"], "age": "18+", "d": ["Джона Хилл"], "m": ["laugh", "sad"], "log": "Подросток из Лос-Анджелеса находит компанию скейтбордистов и пытается понять, сколько стоит принадлежность к новой семье.", "syn": "Лос-Анджелес середины девяностых. Тринадцатилетний Стиви живёт с матерью и старшим братом, отношения с которым давно стали источником постоянного напряжения. Однажды он замечает компанию ребят у скейтшопа и начинает возвращаться туда снова и снова. Скейтборд пока плохо ему подчиняется, зато рядом появляется мир, где можно получить прозвище, заслужить уважение и провести целый день вне дома. Старшие друзья знакомят его с музыкой, городскими маршрутами и негласными правилами своей компании. Желание стать своим заставляет Стиви соглашаться на вещи, к которым он ещё не готов. Фильм наблюдает за обычными разговорами, первыми успехами и болезненными попытками произвести впечатление. За свободой уличного лета постепенно проступают разные представления о дружбе, заботе и взрослении.", "mood": "Тёплое и ностальгическое, временами неловкое и болезненное; без идеализации подростковой среды.", "themes": ["взросление", "найденная семья", "скейт-культура", "потребность в принятии"], "cast": [{"n": "Санни Сулджик", "r": "Стиви"}, {"n": "Кэтрин Уотерстон", "r": "Дэбни, мать Стиви"}, {"n": "Лукас Хеджес", "r": "Иэн, старший брат Стиви"}, {"n": "На-Кел Смит", "r": "Рэй"}, {"n": "Олан Пренатт", "r": "Факшит (Fuckshit)"}], "kp": 7.4, "imdb": 7.4, "aw": [{"y": 2019, "e": "Независимый дух", "c": "Лучший монтаж", "w": "nomination"}, {"y": 2019, "e": "Critics’ Choice Movie Awards", "c": "Лучший молодой актёр или актриса", "w": "nomination"}], "kpurl": "https://www.kinopoisk.ru/film/1040690/", "trailer": "https://a24films.com/films/mid90s"}, {"id": "714248", "t": "Песнь моря", "o": "Song of the Sea", "y": 2014, "min": 93, "genres": ["анимация", "фэнтези", "приключения", "семейный", "драма"], "countries": ["Ирландия", "Дания", "Бельгия", "Франция", "Люксембург"], "age": "6+", "d": ["Томм Мур"], "m": ["inspire", "sad"], "log": "Брат и сестра отправляются через мир ирландских преданий, чтобы найти дорогу домой и услышать голос, связывающий людей с морем.", "syn": "Бен живёт с отцом и младшей сестрой Сиршей у моря, рядом с маяком. После исчезновения матери семья словно разучилась говорить о самом важном, а девочка вообще не произносит слов. Бен раздражается на сестру и держится за собственные воспоминания о маминых историях. Когда бабушка решает увезти детей в город, привычный берег остаётся далеко, но старые легенды неожиданно оказываются совсем рядом. Сирша связана с существами, о которых рассказывала мать, и её голос может иметь для них особое значение. Брату и сестре предстоит пройти незнакомыми дорогами, встретить удивительных обитателей скрытого мира и научиться полагаться друг на друга. Путешествие соединяет семейную историю с ирландскими сказаниями, постепенно превращая детские страхи и обиды в понятный каждому разговор о памяти, заботе и утрате.", "mood": "Нежное, меланхоличное и волшебное; тревога уравновешена теплом и юмором.", "themes": ["семья и утрата", "сила голоса", "ирландский фольклор", "сочувствие"], "cast": [{"n": "Дэвид Роул", "r": "Бен"}, {"n": "Люси О’Коннелл", "r": "Сирша (Saoirse)"}, {"n": "Брендан Глисон", "r": "Конор / Мак Лир"}, {"n": "Фионнула Флэнаган", "r": "Бабушка / Маха"}, {"n": "Лиза Ханниган", "r": "Брона"}], "kp": 8.2, "imdb": 8.0, "aw": [{"y": 2015, "e": "Оскар", "c": "Лучший анимационный полнометражный фильм", "w": "nomination"}, {"y": 2015, "e": "Европейская киноакадемия", "c": "Лучший анимационный фильм", "w": "win"}, {"y": 2015, "e": "Сезар", "c": "Лучший анимационный фильм", "w": "nomination"}], "kpurl": "https://www.kinopoisk.ru/film/714248/", "trailer": "https://gkids.com/films/song-of-the-sea/"}, {"id": "425", "t": "Седьмая печать", "o": "Det sjunde inseglet", "y": 1957, "min": 96, "genres": ["драма", "фэнтези"], "countries": ["Швеция"], "age": "18+", "d": ["Ингмар Бергман"], "m": ["think", "nerve"], "log": "Вернувшийся из крестового похода рыцарь предлагает Смерти шахматную партию и отправляется через страну, охваченную чумой.", "syn": "Рыцарь Антониус Блок возвращается из крестового похода вместе с оруженосцем Йёнсом. На родине их встречают чума, страх и люди, пытающиеся объяснить происходящее волей небес. На пустынном берегу Блок сталкивается со Смертью и предлагает ей сыграть в шахматы, надеясь выиграть время. Продолжая путь, он ищет ответ на вопрос, который не дают ни вера, ни пережитый опыт: можно ли узнать, есть ли смысл за пределами человеческого существования. Дорога сводит путешественников с бродячими артистами, крестьянами и служителями религиозных обрядов. У каждого свой способ выдержать неизвестность — насмешка, любовь, труд или молитва. История соединяет философский спор с земными заботами людей, которым всё ещё нужно делить еду, растить детей и помогать друг другу среди всеобщей тревоги.", "mood": "Суровое и тревожное, с неожиданным бытовым юмором и островками нежности.", "themes": ["смерть и конечность", "вера и сомнение", "сострадание", "искусство и повседневность"], "cast": [{"n": "Макс фон Сюдов", "r": "Антониус Блок"}, {"n": "Гуннар Бьёрнстранд", "r": "Йёнс, оруженосец"}, {"n": "Бенгт Экерут", "r": "Смерть"}, {"n": "Нильс Поппе", "r": "Юф"}, {"n": "Биби Андерссон", "r": "Миа"}], "kp": 8.0, "imdb": 8.1, "aw": [{"y": 1957, "e": "Каннский кинофестиваль", "c": "Специальный приз жюри", "w": "win"}], "kpurl": "https://www.kinopoisk.ru/film/425/", "trailer": "https://www.criterion.com/films/173-the-seventh-seal"}, {"id": "425400", "t": "Пожары", "o": "Incendies", "y": 2010, "min": 131, "genres": ["драма", "детектив", "военный"], "countries": ["Канада", "Франция"], "age": "18+", "d": ["Дени Вильнёв"], "m": ["nerve", "sad", "think"], "log": "Завещание матери отправляет канадских близнецов на Ближний Восток, где им предстоит заново узнать историю своей семьи.", "syn": "После смерти матери близнецы Жанна и Симон приходят к нотариусу и получают необычное завещание. Им оставлены два письма, которые нужно передать людям, само существование которых ставит под сомнение привычную семейную историю. Жанна решает разобраться в прошлом Наваль и отправляется на Ближний Восток; Симону гораздо труднее принять материнскую просьбу. Поиски ведут от официальных свидетельств к чужим воспоминаниям, от сегодняшней жизни к следам давнего вооружённого конфликта. Параллельно фильм показывает молодую Наваль в стране, где частная судьба всё сильнее зависит от политического и религиозного противостояния. Близнецам приходится учиться слушать людей, для которых прошлое по-прежнему остаётся болезненным настоящим. Семейное расследование постепенно превращается в попытку понять молчание матери, силу её обещаний и цену сохранённой памяти.", "mood": "Напряжённое, скорбное и сосредоточенное; эмоциональная сила нарастает без облегчительных объяснений.", "themes": ["семейная память", "последствия войны", "молчание и свидетельство", "поиск происхождения"], "cast": [{"n": "Лубна Азабаль", "r": "Наваль Марван"}, {"n": "Мелисса Дезормо-Пулен", "r": "Жанна Марван"}, {"n": "Максим Годетт", "r": "Симон Марван"}, {"n": "Реми Жирар", "r": "Жан Лебель, нотариус"}, {"n": "Аллен Олтмен", "r": "Маддад, нотариус"}], "kp": 8.1, "imdb": 8.3, "aw": [{"y": 2011, "e": "Оскар", "c": "Лучший фильм на иностранном языке", "w": "nomination"}, {"y": 2011, "e": "Джини", "c": "Лучший фильм", "w": "win"}, {"y": 2011, "e": "Джини", "c": "Лучшая режиссура", "w": "win"}, {"y": 2011, "e": "Джини", "c": "Лучшая женская роль", "w": "win"}], "kpurl": "https://www.kinopoisk.ru/film/425400/", "trailer": "https://www.sonyclassics.com/incendies/"}, {"id": "5237750", "t": "Не хороните меня без Ивана", "o": "Кэрэни көрбүт", "y": 2022, "min": 124, "genres": ["драма", "комедия", "исторический"], "countries": ["Россия"], "age": "12+", "d": ["Любовь Борисова"], "m": ["laugh", "inspire"], "log": "Якутский крестьянин, страдающий приступами летаргического сна, следует за художником в экспедицию, чтобы однажды не оказаться похороненным заживо.", "syn": "Якутия, 1910 год. Степан Бересеков живёт среди людей, которым трудно понять его необычное состояние: время от времени он впадает в сон, почти неотличимый от смерти. Художник и исследователь Иван Попов умеет распознавать эти приступы и становится для Степана человеком, которому можно доверить собственную жизнь. Но Ивану предстоит долгая этнографическая экспедиция. Не желая оставаться без своего защитника, Степан решает отправиться вслед за ним. Дорога ведёт путешественников через селения и открытые просторы, знакомит с разными людьми, обычаями и историями. Пока Иван собирает предметы и свидетельства местной культуры, его спутник по-своему воспринимает красоту окружающего мира. Их совместный путь соединяет бытовые трудности, смешные недоразумения и моменты тихого удивления, постепенно превращаясь в историю доверия, человеческой чуткости и внимательного отношения к жизни.", "mood": "Тёплое, созерцательное и мягко ироничное; тревога за уязвимого героя соседствует с радостью открытия мира.", "themes": ["дружба и доверие", "способность видеть красоту", "страх смерти и любовь к жизни", "культурная память"], "cast": [{"n": "Дариус Гумаускас", "r": "Иван Попов"}, {"n": "Александр Чичахов", "r": "Степан Бересеков"}, {"n": "Михаил Сажин", "r": "Николай Попов"}, {"n": "Вячеслав Югов", "r": "отец Василий"}, {"n": "Елена Маркова", "r": "Февронья"}], "kp": 8.0, "imdb": 7.4, "aw": [{"y": 2022, "e": "Зимний", "c": "Главный приз", "w": "win"}, {"y": 2023, "e": "Фаджр, 41-й международный кинофестиваль", "c": "Лучший сценарий", "w": "win"}, {"y": 2023, "e": "XXV Всероссийский Шукшинский кинофестиваль", "c": "Гран-при за лучший игровой полнометражный фильм", "w": "win"}, {"y": 2023, "e": "Кинофестиваль стран Шанхайской организации сотрудничества", "c": "Специальный приз жюри", "w": "win"}, {"y": 2024, "e": "Белый квадрат", "c": "Лучшая операторская работа в полнометражном художественном фильме 2023 года", "w": "nomination"}], "kpurl": "https://www.kinopoisk.ru/film/5237750/", "trailer": "https://kinotv.ru/read/news/u-yakutskogo-filma-ne-khoronite-menya-bez-ivana-poyavilsya-treyler/"}, {"id": "225011", "t": "Изгнание", "o": "Изгнание", "y": 2007, "min": 150, "genres": ["драма"], "countries": ["Россия"], "age": "18+", "d": ["Андрей Звягинцев"], "m": ["sad", "think", "nerve"], "log": "Поездка семьи в загородный дом превращается в испытание близости, когда признание жены разрушает уверенность мужа в привычной жизни.", "syn": "Алекс, Вера и двое детей уезжают из города в старый семейный дом среди тихих полей. Просторный пейзаж обещает передышку, однако напряжение, накопившееся между супругами, следует за ними. Вера пытается сообщить мужу нечто, что меняет его представление об их отношениях. Алекс ищет ясное объяснение и способ действовать, но разговоры всё чаще уступают место молчанию, догадкам и советам других людей. Рядом остаются дети, родственники и знакомые, чьё присутствие подчёркивает разрыв между внешней повседневностью и внутренним кризисом семьи. Фильм разворачивается медленно, внимательно следя за паузами, жестами и расстоянием между персонажами. Его интрига строится не столько на поиске виновного, сколько на трудности услышать близкого человека, когда страх и уверенность в собственной правоте начинают определять каждое решение.", "mood": "Созерцательное, тревожное и скорбное; длительные паузы усиливают чувство надвигающейся беды.", "themes": ["отчуждение в семье", "невозможность диалога", "вина и ответственность", "вера и сомнение"], "cast": [{"n": "Константин Лавроненко", "r": "Алекс"}, {"n": "Мария Бонневи", "r": "Вера"}, {"n": "Александр Балуев", "r": "Марк"}, {"n": "Дмитрий Ульянов", "r": "Роберт"}, {"n": "Виталий Кищенко", "r": "Герман"}], "kp": 7.3, "imdb": 7.5, "aw": [{"y": 2007, "e": "Каннский кинофестиваль", "c": "Лучшая мужская роль", "w": "win"}], "kpurl": "https://www.kinopoisk.ru/film/225011/", "trailer": "https://start.ru/watch/izgnanie/trailers/79292"}, {"id": "1259195", "t": "Война искусств", "o": "War of Art", "y": 2019, "min": 102, "genres": ["документальный", "искусство"], "countries": ["Норвегия", "Германия"], "age": "18+", "d": ["Томми Гулликсен"], "m": ["laugh", "nerve", "think"], "log": "Художники приезжают в Северную Корею ради культурного обмена и сталкиваются с несовпадающими представлениями об искусстве и свободе.", "syn": "Группа международных художников отправляется в Пхеньян по инициативе Мортена Тровика. Участники рассчитывают познакомиться с северокорейскими коллегами, обменяться опытом и создать пространство для совместной работы. Но уже первые встречи обнаруживают, насколько по-разному стороны понимают назначение искусства, роль автора и допустимые способы выражения. Разговоры о красоте, технике и личном опыте постоянно затрагивают вопросы идеологии, доверия и культурных границ. Камера следует за гостями во время поездки, фиксируя профессиональное любопытство, неловкость, споры и попытки найти общий язык. Вместо готовой истории о взаимопонимании возникает наблюдение за самим процессом контакта. Каждый участник приносит собственные ожидания и привычные оценки, которые встреча заставляет проверять. Фильм предлагает смотреть на культурный обмен как на трудную практику, где искренний интерес соседствует с ограничениями, недоразумениями и неравенством возможностей.", "mood": "Любопытное, ироничное и напряжённое; комизм недоразумений соседствует с дискомфортом.", "themes": ["свобода искусства", "культурный обмен", "идеология", "границы взаимопонимания"], "cast": [{"n": "Мортен Тровик", "r": "участник, художник и организатор культурного обмена"}, {"n": "Хенрик Плахт", "r": "участник, художник"}, {"n": "Ник Новак", "r": "участник, художник, работающий со звуком"}, {"n": "Кэти Бойд", "r": "участница, театральный режиссёр"}, {"n": "Квентин Ши", "r": "участник, фотограф и художник"}], "kp": 7.4, "imdb": 7.0, "aw": [{"y": 2019, "e": "HUMAN International Documentary Film Festival", "c": "Норвежский документальный конкурс", "w": "win"}], "kpurl": "https://www.kinopoisk.ru/film/1259195/", "trailer": "https://www.filmportal.de/video/war-of-art-2019"}, {"id": "1347315", "t": "Книготорговцы", "o": "The Booksellers", "y": 2019, "min": 99, "genres": ["документальный", "культура"], "countries": ["США"], "age": "18+", "d": ["Д. У. Янг"], "m": ["inspire", "think"], "log": "Нью-йоркские букинисты, коллекционеры и писатели рассказывают, почему редкая книга остаётся чем-то большим, чем товар или носитель текста.", "syn": "За витринами книжных магазинов Нью-Йорка существует особый мир людей, которые ищут редкие издания, собирают архивы и узнают историю книги по следам её прежних владельцев. Режиссёр Д. У. Янг знакомится с букинистами, коллекционерами, аукционистами и писателями, для которых бумажный экземпляр обладает собственной биографией. Их рассказы ведут от семейных магазинов и тесных складов к крупным ярмаркам и неожиданным находкам. Одни собеседники вспоминают исчезающие традиции торговли, другие объясняют, как интернет и новое поколение собирателей меняют профессию. Разговор постепенно выходит за пределы редкостей и высоких цен: кто определяет культурную ценность, какие истории достойны сохранения и кому доступно коллекционирование? Фильм соединяет удовольствие от книжного изобилия с вниманием к повседневной работе людей, поддерживающих жизнь этой городской среды.", "mood": "Тёплое, любознательное и разговорное; ностальгия сочетается с интересом к будущему.", "themes": ["книга как культурный объект", "сохранение памяти", "коллекционирование", "смена поколений"], "cast": [{"n": "Паркер Поузи", "r": "закадровая рассказчица"}, {"n": "Фрэн Лебовиц", "r": "участница, писательница и эссеистка"}, {"n": "Гей Тализ", "r": "участник, писатель и журналист"}, {"n": "Адина Коэн", "r": "участница, совладелица Argosy Book Store"}, {"n": "Нэнси Басс Уайден", "r": "участница, владелица Strand Book Store"}], "kp": 7.6, "imdb": 6.9, "aw": [], "kpurl": "https://www.kinopoisk.ru/film/1347315/", "trailer": "https://greenwichentertainment.com/film/the-booksellers/"}, {"id": "677566", "t": "Великая красота", "o": "La grande bellezza", "y": 2013, "min": 141, "genres": ["драма", "комедия"], "countries": ["Италия", "Франция"], "age": "18+", "d": ["Паоло Соррентино"], "m": ["sad", "think", "laugh"], "log": "Римский писатель и светский хроникёр после своего шестидесятипятилетия начинает искать смысл за привычной чередой вечеринок и красивых зрелищ.", "syn": "Джеп Гамбарделла давно умеет быть центром римской светской жизни. Когда-то он написал успешную книгу, а теперь работает журналистом, ходит на вечеринки и наблюдает за людьми с безупречной иронией. После шестидесятипятилетия привычный круг развлечений начинает казаться ему одновременно притягательным и утомительным. Разговоры с друзьями, встречи с новыми знакомыми и воспоминания о молодости заставляют Джепа внимательнее смотреть на то, что прежде растворялось в шуме. Он бродит по городу, где дворцы, руины, частные квартиры и ночные террасы существуют рядом с тщеславием, одиночеством и неожиданной нежностью. Фильм следует за этим движением внимания, не превращая его в прямолинейный поиск ответа. Перед героем возникает вопрос, можно ли снова почувствовать полноту жизни, если годами довольствовался ролью остроумного наблюдателя.", "mood": "Меланхоличное, чувственное и сатирическое; восторг перед красотой постоянно перемежается усталостью.", "themes": ["старение и память", "красота и пустота", "творческий кризис", "светское общество"], "cast": [{"n": "Тони Сервилло", "r": "Джеп Гамбарделла"}, {"n": "Карло Вердоне", "r": "Романо"}, {"n": "Сабрина Ферилли", "r": "Рамона"}, {"n": "Карло Буччироссо", "r": "Лелло Кава"}, {"n": "Яя Форте", "r": "Трюмо"}], "kp": 7.8, "imdb": 7.7, "aw": [{"y": 2014, "e": "Оскар", "c": "Лучший фильм на иностранном языке", "w": "win"}, {"y": 2014, "e": "Золотой глобус", "c": "Лучший фильм на иностранном языке", "w": "win"}, {"y": 2014, "e": "BAFTA", "c": "Лучший фильм не на английском языке", "w": "win"}, {"y": 2013, "e": "Европейская киноакадемия", "c": "Лучший европейский фильм", "w": "win"}, {"y": 2013, "e": "Европейская киноакадемия", "c": "Лучший европейский актёр", "w": "win"}], "kpurl": "https://www.kinopoisk.ru/film/677566/", "trailer": "https://www.criterion.com/films/28604-the-great-beauty"}];
+const POSTERS = {"6553389": "posters/6553389.jpg", "1040690": "posters/1040690.jpg", "714248": "posters/714248.jpg", "425": "posters/425.jpg", "425400": "posters/425400.jpg", "5237750": "posters/5237750.jpg", "225011": "posters/225011.jpg", "1259195": "posters/1259195.jpg", "1347315": "posters/1347315.jpg", "677566": "posters/677566.jpg"};
+const TIMES = [
+ {v:105,word:"около полутора часов",chip:"Около 1,5 часа"},
+ {v:130,word:"часа два",chip:"Часа два"},
+ {v:999,word:"весь вечер",chip:"Весь вечер"}
+];
+const MOODS = [
+ {v:"laugh",word:"посмеяться",tag:"Смешно"},
+ {v:"nerve",word:"понервничать",tag:"Напряжённо"},
+ {v:"sad",word:"погрустить",tag:"Грустно"},
+ {v:"think",word:"подумать",tag:"Заставляет думать"},
+ {v:"inspire",word:"вдохновиться",tag:"Вдохновляет"},
+ {v:"any",word:"чего угодно",tag:""}
+];
+const state = {time:105, mood:"laugh"};
+try{const s=JSON.parse(sessionStorage.getItem("knv-filter")||"null");if(s){state.time=s.time;state.mood=s.mood}}catch(e){}
+const app = document.getElementById("app");
+
+const pad = n => String(n).padStart(2,"0");
+function endTime(min){const d=new Date(Date.now()+min*60000);return pad(d.getHours())+":"+pad(d.getMinutes())}
+function dur(min){const h=Math.floor(min/60),m=min%60;return (h?h+" ч ":"")+(m?m+" мин":"")}
+function plural(n,a,b,c){const m10=n%10,m100=n%100;if(m10===1&&m100!==11)return a;if(m10>=2&&m10<=4&&(m100<10||m100>=20))return b;return c}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function cap(s){return s[0].toUpperCase()+s.slice(1)}
+function fits(f){return f.min<=state.time&&(state.mood==="any"||f.m.includes(state.mood))}
+
+function poster(f,big){return `<img class="poster${big?" big":""}" src="${POSTERS[f.id]}" alt="Постер фильма «${esc(f.t)}»" loading="lazy">`}
+function card(f){
+  return `<a class="card" href="#film/${f.id}">${poster(f)}
+    <h3>${esc(f.t)}</h3><p>${dur(f.min)}, финал в <span class="end">${endTime(f.min)}</span></p></a>`;
+}
+function getToday(){
+  try{const s=JSON.parse(localStorage.getItem("knv-today")||"null");
+    if(s&&s.date===new Date().toDateString())return FILMS.find(f=>f.id===s.id)||null;}catch(e){}
+  return null;
+}
+
+function renderCatalog(){
+  const t=TIMES.find(x=>x.v===state.time)||TIMES[0], m=MOODS.find(x=>x.v===state.mood)||MOODS[0];
+  const list=FILMS.filter(fits).sort((a,b)=>a.min-b.min);
+  const rest=FILMS.filter(f=>!fits(f)).sort((a,b)=>a.min-b.min);
+  const today=getToday();
+  document.title="Кино на вечер";
+  app.innerHTML=`
+  <section class="hero">
+    <h1 class="sentence">Сегодня у меня <button class="slot" data-focus="lt">${t.word}</button>, и хочется <button class="slot" data-focus="lm">${m.word}</button></h1>
+    <div class="pickers">
+      <div><p class="picker-label" id="lt">Сколько есть времени</p>
+        <div class="chips" role="group" aria-labelledby="lt">${TIMES.map(x=>`<button class="chip" data-time="${x.v}" aria-pressed="${x.v===state.time}">${x.chip}</button>`).join("")}</div></div>
+      <div><p class="picker-label" id="lm">Какое настроение</p>
+        <div class="chips" role="group" aria-labelledby="lm">${MOODS.map(x=>`<button class="chip" data-mood="${x.v}" aria-pressed="${x.v===state.mood}">${x.v==="any"?"Неважно":cap(x.word)}</button>`).join("")}</div></div>
+    </div>
+    <div class="today${today?" on":""}">${today?`<span>Вы уже выбрали на сегодня: <a href="#film/${today.id}">${esc(today.t)}</a></span><span style="color:var(--muted)">Финал в ${endTime(today.min)}, если начать сейчас</span>`:""}</div>
+  </section>
+  <div class="bar">
+    <p class="count">${list.length?`${list.length} ${plural(list.length,"фильм","фильма","фильмов")} <span>на этот вечер</span>`:"Пока ничего"}</p>
+    ${list.length>1?`<button class="btn" id="pick">Выбрать за меня</button>`:""}
+  </div>
+  ${list.length?`<div class="grid">${list.map(card).join("")}</div>`:
+   `<div class="empty"><h2>Под такой вечер фильмов нет</h2><p>Попробуйте дать себе чуть больше времени или выбрать другое настроение.</p><button class="btn ghost" data-time="999">Показать на весь вечер</button></div>`}
+  ${rest.length?`<section class="rest"><h2>Остальная коллекция</h2><p class="sub">Не совпадают по времени или настроению, но тоже стоят внимания.</p><div class="grid">${rest.map(card).join("")}</div></section>`:""}`;
+}
+
+function renderFilm(id){
+  const f=FILMS.find(x=>x.id===id);
+  if(!f){location.hash="";return}
+  document.title=f.t+" — Кино на вечер";
+  const today=getToday(), chosen=today&&today.id===f.id;
+  const overlap=x=>x.m.filter(m=>f.m.includes(m)).length;
+  const similar=FILMS.filter(x=>x.id!==f.id&&overlap(x)>0).sort((a,b)=>overlap(b)-overlap(a)||a.min-b.min).slice(0,4);
+  const aw=[...f.aw].sort((a,b)=>(a.w==="win"?0:1)-(b.w==="win"?0:1)).slice(0,4);
+  app.innerHTML=`
+  <a class="back" href="#">← Все фильмы на вечер</a>
+  <article class="film">
+    <aside>${poster(f,true)}</aside>
+    <div>
+      <h1>${esc(f.t)}</h1>
+      <p class="orig">${esc(f.o)}</p>
+      <dl class="facts">
+        <div><dt>Год</dt><dd>${f.y}</dd></div>
+        <div><dt>${f.countries.length>1?"Страны":"Страна"}</dt><dd>${esc(f.countries.join(", "))}</dd></div>
+        <div><dt>${f.d.length>1?"Режиссёры":"Режиссёр"}</dt><dd>${esc(f.d.join(", "))}</dd></div>
+        <div><dt>Длительность</dt><dd>${dur(f.min)}</dd></div>
+        ${f.age?`<div><dt>Возраст</dt><dd>${esc(f.age)}</dd></div>`:""}
+      </dl>
+      <div class="clock"><b>${endTime(f.min)}</b><span>закончится, если начать прямо сейчас</span></div>
+      <p class="logline">${esc(f.log)}</p>
+      <p class="syn">${esc(f.syn)}</p>
+      <div class="why"><small>Настроение фильма</small><p>${esc(f.mood)}</p></div>
+      <div class="tags">${f.m.map(m=>`<span class="tag">${MOODS.find(x=>x.v===m).tag}</span>`).join("")}${f.genres.map(g=>`<span class="tag">${esc(cap(g))}</span>`).join("")}</div>
+      <div class="actions">
+        <button class="btn" id="choose" aria-pressed="${chosen}">${chosen?"Выбрано на сегодня":"Смотрю сегодня"}</button>
+        <a class="btn ghost" href="https://www.kinopoisk.ru/film/${f.id}/video/" target="_blank" rel="noopener">Трейлер на Кинопоиске</a>
+        <a class="btn ghost" href="#">Выбрать другой</a>
+      </div>
+      ${(f.kp||f.imdb)?`<div class="block"><h2>Рейтинги</h2><div class="scores">${f.kp?`<div><b>${f.kp.toFixed(1)}</b><span>Кинопоиск</span></div>`:""}${f.imdb?`<div><b>${f.imdb.toFixed(1)}</b><span>IMDb</span></div>`:""}</div></div>`:""}
+      ${f.cast.length?`<div class="block"><h2>В ролях</h2><ul class="cast">${f.cast.map(p=>`<li>${esc(p.n)}${p.r?`<span>${esc(p.r)}</span>`:""}</li>`).join("")}</ul></div>`:""}
+      ${aw.length?`<div class="block"><h2>Награды</h2><ul class="awards">${aw.map(a=>`<li><div>${esc(a.e)}, ${a.y}<br><span style="white-space:normal">${esc(a.c)}</span></div><span>${a.w==="win"?"Победа":"Номинация"}</span></li>`).join("")}</ul></div>`:""}
+      ${f.themes.length?`<div class="block"><h2>О чём ещё</h2><div class="tags" style="margin:0">${f.themes.map(t=>`<span class="tag">${esc(cap(t))}</span>`).join("")}</div></div>`:""}
+      <div class="block links">${f.kpurl?`<a href="${esc(f.kpurl)}" target="_blank" rel="noopener">Страница на Кинопоиске</a>`:""}</div>
+    </div>
+  </article>
+  ${similar.length?`<section class="more"><h2>С похожим настроением</h2><div class="grid">${similar.map(card).join("")}</div></section>`:""}`;
+  window.scrollTo(0,0);
+}
+
+function route(){
+  const h=location.hash.replace(/^#/,"");
+  if(h.startsWith("film/"))renderFilm(h.slice(5)); else renderCatalog();
+}
+function save(){try{sessionStorage.setItem("knv-filter",JSON.stringify(state))}catch(e){}}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),2200)}
+
+app.addEventListener("click",e=>{
+  const el=e.target.closest("button");if(!el)return;
+  if(el.dataset.time){state.time=+el.dataset.time;save();renderCatalog();return}
+  if(el.dataset.mood){state.mood=el.dataset.mood;save();renderCatalog();return}
+  if(el.dataset.focus){const g=document.querySelector(`[aria-labelledby="${el.dataset.focus}"]`);
+    (g.querySelector('[aria-pressed="true"]')||g.querySelector("button")).focus();return}
+  if(el.id==="pick"){const l=FILMS.filter(fits);const f=l[Math.floor(Math.random()*l.length)];location.hash="film/"+f.id;return}
+  if(el.id==="choose"){
+    const id=location.hash.slice(6), today=getToday();
+    if(today&&today.id===id){try{localStorage.removeItem("knv-today")}catch(e){}toast("Выбор отменён")}
+    else{try{localStorage.setItem("knv-today",JSON.stringify({id,date:new Date().toDateString()}))}catch(e){}toast("Хорошего вечера!")}
+    renderFilm(id);
+  }
+});
+function tick(){const d=new Date();document.getElementById("now").textContent="Сейчас "+pad(d.getHours())+":"+pad(d.getMinutes())}
+window.addEventListener("hashchange",route);
+tick();setInterval(tick,30000);
+route();
+</script>
+</body>
+</html>
