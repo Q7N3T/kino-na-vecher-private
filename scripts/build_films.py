@@ -22,13 +22,23 @@ UA = {"User-Agent": "kino-na-vecher/1.0 (https://github.com/Q7N3T/kino-na-vecher
 KINDS = {"movie": None, "tvSeries": "s", "tvMiniSeries": "ms"}  # None — фильм
 SKIP_GENRES = {"Talk-Show", "News"}
 
+
+def skip(genres, ttype):
+    """Не «кино на вечер»: ток-шоу и новости, реалити и игровые шоу (кроме сценарных, с драмой), рестлинг."""
+    g = set(genres)
+    if g & SKIP_GENRES:
+        return True
+    if g & {"Reality-TV", "Game-Show"} and "Drama" not in g:
+        return True
+    return ttype != "movie" and "Sport" in g and g <= {"Sport", "Action"}  # «WWE RAW» и подобные шоу
+
 GENRES_RU = {
     "Action": "боевик", "Adventure": "приключения", "Animation": "мультфильм", "Biography": "биография",
     "Comedy": "комедия", "Crime": "криминал", "Documentary": "документальный", "Drama": "драма",
     "Family": "семейный", "Fantasy": "фэнтези", "Film-Noir": "нуар", "History": "история",
     "Horror": "ужасы", "Music": "музыка", "Musical": "мюзикл", "Mystery": "детектив",
     "Romance": "мелодрама", "Sci-Fi": "фантастика", "Sport": "спорт", "Thriller": "триллер",
-    "War": "военный", "Western": "вестерн", "News": "новости", "Reality-TV": "реалити", "Talk-Show": "ток-шоу",
+    "War": "военный", "Western": "вестерн", "News": "новости", "Reality-TV": "реалити", "Talk-Show": "ток-шоу", "Game-Show": "игровое шоу",
 }
 
 
@@ -99,7 +109,7 @@ def build_imdb(min_votes):
         if ttype == "movie" and nn(runtime) is None:
             continue
         g = nn(genres).split(",") if nn(genres) else []
-        if SKIP_GENRES & set(g):  # ток-шоу и новости выходят каждый день — не «кино на вечер»
+        if skip(g, ttype):
             continue
         f = {"id": tid, "t": primary, "o": orig, "y": int(year), "g": g, "imdb": rating[tid][0], "v": rating[tid][1]}
         if nn(runtime): f["min"] = int(runtime)
@@ -124,9 +134,10 @@ def build_imdb(min_votes):
         if r[0] not in eps: continue
         parent, season = eps[r[0]]
         y = int(r[5]) if nn(r[5]) else None
-        a = aired.setdefault(parent, {"ep": 0, "ss": set(), "lens": [], "last": 0, "future": set(), "by": {}})
+        a = aired.setdefault(parent, {"ep": 0, "ep_any": 0, "ss": set(), "lens": [], "last": 0, "future": set(), "by": {}})
         if r[0] in rated or (y and y < year_now):
-            a["ep"] += 1
+            a["ep_any"] += 1
+            if season: a["ep"] += 1  # «серий вышло» = сумма по сезонам; серии без номера сезона (спецвыпуски) не считаем
             if season:
                 a["ss"].add(season)
                 b = a["by"].setdefault(season, [0, None, None])  # серий, первый и последний год
@@ -138,7 +149,7 @@ def build_imdb(min_votes):
             a["future"].add(season)
     for tid, a in aired.items():
         f = films[tid]
-        if a["ep"]: f["ep"] = a["ep"]
+        if a["ep"] or a["ep_any"]: f["ep"] = a["ep"] or a["ep_any"]  # у сериалов совсем без сезонов — все серии
         if a["ss"]: f["ss"] = len(a["ss"])
         if a["last"]: f["la"] = a["last"]  # год последней вышедшей серии
         if a["by"]: f["sx"] = [[n, *a["by"][n]] for n in sorted(a["by"])]  # по сезонам — для страницы сериала
