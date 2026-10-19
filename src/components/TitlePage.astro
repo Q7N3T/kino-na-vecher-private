@@ -200,14 +200,17 @@ const jsonld = {
 
 <script>
   import { watchlist, toggleWatch } from '../lib/client.js';
+  import { record } from '../lib/taste.js';
   const w = document.getElementById('watch')!;
   const id = w.dataset.id!;
   const paint = (on: boolean) => { w.setAttribute('aria-pressed', String(on)); w.querySelector('span')!.textContent = on ? 'В списке' : 'Хочу посмотреть'; };
   paint(watchlist().includes(id));
-  w.addEventListener('click', () => paint(toggleWatch(id)));
+  record(id, 'view'); // открытая страница — сигнал для подбора на главной
+  w.addEventListener('click', () => { const on = toggleWatch(id); paint(on); if (on) record(id, 'watch'); });
   const t = document.getElementById('tonight')!;
   t.addEventListener('click', () => {
     try { localStorage.setItem('knv-today', JSON.stringify({ id, date: new Date().toDateString() })); } catch {}
+    record(id, 'tonight');
     t.textContent = 'Хорошего вечера!';
   });
 </script>

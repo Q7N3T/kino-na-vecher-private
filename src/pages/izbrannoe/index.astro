@@ -7,8 +7,23 @@ const base = import.meta.env.BASE_URL;
     <header class="page-h"><h1>Хочу посмотреть</h1><p>Список хранится в этом браузере. Скоро появятся аккаунты — тогда он будет доступен на всех устройствах.</p></header>
     <div class="grid" id="grid" style="padding-top: 32px"></div>
     <div class="empty" id="empty" hidden><h2>Пока пусто</h2><p>Нажмите «Хочу посмотреть» на странице фильма или сериала — он появится здесь.</p><a class="btn" href={base}>Подобрать на вечер</a></div>
+    <section class="taste">
+      <h2>Ваши вкусы</h2>
+      <p>Подбор на главной учитывает, что вы открывали, добавляли сюда и выбирали «Смотрю сегодня». Всё это хранится только в этом браузере.</p>
+      <button class="btn ghost" id="forget">Забыть мои вкусы</button>
+    </section>
   </div>
 </Base>
+<style>
+  .taste { margin: 48px 0 24px; padding-top: 32px; border-top: 1px solid var(--line); max-width: 60ch; }
+  .taste h2 { margin: 0 0 8px; font-size: 20px; }
+  .taste p { margin: 0 0 16px; color: var(--muted); }
+</style>
+<script>
+  import { forget } from '../../lib/taste.js';
+  const fb = document.getElementById('forget')!;
+  fb.addEventListener('click', () => { forget(); fb.textContent = 'Готово, подбор начнётся с чистого листа'; fb.setAttribute('disabled', ''); });
+</script>
 <script>
   import { loadIndex, watchlist, base } from '../../lib/client.js';
   import { cardHTML } from '../../lib/format.js';

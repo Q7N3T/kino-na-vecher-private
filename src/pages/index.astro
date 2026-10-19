@@ -32,10 +32,11 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
     <a class="pick" id="pick-card" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
       <span class="pick-p poster" style={`--h:${hue(tonight[0].id)}`} id="pick-poster" set:html={tonight[0].p ? `<img src="${tmdbImg(tonight[0].p, 200)}" alt="" onerror="this.remove()">` : ''}></span>
       <span class="pick-b">
-        <small>Выбор на сегодня</small>
+        <small id="pick-l">Выбор на сегодня</small>
         <b id="pick-t">{tonight[0].t}</b>
         <span id="pick-m">{tonight[0].k ? `${kindName(tonight[0])} · ${seasons(tonight[0])} · серия ${dur(tonight[0].min)}` : `${tonight[0].y} · ${dur(tonight[0].min)}`}</span>
         <span class="pick-e" id="pick-e">Финал в <span data-end={tonight[0].min}></span></span>
+        <span class="pick-n">Новый выбор — в полночь</span>
       </span>
     </a>
   </section>
@@ -94,6 +95,7 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
   .pick-b b { font-size: 20px; font-weight: 600; line-height: 1.25; }
   .pick-b > span { font-size: 14px; color: var(--muted); }
   .pick-b .pick-e { color: var(--accent); }
+  .pick-b .pick-n { font-size: 12px; color: var(--dim); margin-top: 2px; }
   @keyframes pop { 0% { transform: scale(.85); opacity: .3; } 100% { transform: none; opacity: 1; } }
   @media (max-width: 760px) {
     .hero { padding-top: 24px; gap: 24px; }
@@ -107,7 +109,8 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
 </style>
 
 <script>
-  import { loadIndex, matches, base } from '../lib/client.js';
+  import { loadIndex, matches, base, watchlist } from '../lib/client.js';
+  import { profile, personalize, dailyPick } from '../lib/taste.js';
   import { cardHTML, MOODS, TIMES, KINDS, plural, dur, kindName, seasons, tmdbImg } from '../lib/format.js';
 
   const state = { time: 105, mood: 'laugh', kind: 'any' };
@@ -126,16 +129,21 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
 
   async function update() {
     const all = await loadIndex();
-    list = all.filter((f) => matches(f, state));
+    const prof = profile(new Map(all.map((f) => [f.id, f])));
+    // с историей просмотров подборка учитывает вкус: похожее по духу поднимается выше
+    list = personalize(all.filter((f) => matches(f, state)), prof);
     const forms = KINDS.find((k) => k.v === state.kind)!.forms;
-    $('tonight-n').textContent = list.length ? list.length.toLocaleString('ru-RU') + ' ' + plural(list.length, ...forms) : '';
+    $('tonight-n').textContent = list.length ? list.length.toLocaleString('ru-RU') + ' ' + plural(list.length, ...forms) + (prof.n ? ' · с учётом ваших вкусов' : '') : '';
     dedupe(new Set(list.slice(0, 12).map((f) => f.id)));
     $('tonight').innerHTML = list.length
       ? list.slice(0, 12).map((f, i) => cardHTML(f, base, i)).join('')
       : '<div class="empty"><h2>Под такой вечер ничего нет</h2><p>Дайте себе чуть больше времени или выберите другое настроение.</p></div>';
     const q = new URLSearchParams({ time: String(state.time), mood: state.mood });
     $('tonight-all').setAttribute('href', `${base}${state.kind === 'series' ? 'serialy' : 'filmy'}/?${q}`);
-    const f = list[0];
+    // выбор дня: меняется в полночь, при тех же фильтрах весь день один и тот же
+    const f = dailyPick(list, prof, `${state.time}|${state.mood}|${state.kind}`, watchlist());
+    $('pick-l').textContent = prof.n ? 'Выбор на сегодня — по вашим вкусам' : 'Выбор на сегодня';
+    ($('pick-card') as HTMLElement).hidden = !f;
     if (f) {
       ($('pick-card') as HTMLAnchorElement).href = `${base}${f.k ? 'serial' : 'film'}/${f.slug}/`;
       $('pick-t').textContent = f.t;
