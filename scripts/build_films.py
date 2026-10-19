@@ -185,7 +185,7 @@ def tmdb(films):
                     j = json.load(r)
                 res = j.get("movie_results") or j.get("tv_results") or []
                 m = res[0] if res else {}
-                return tid, {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview")}
+                return tid, {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview"), "pop": m.get("popularity")}
             except urllib.error.HTTPError as e:
                 if e.code == 429: time.sleep(2 ** attempt); continue
                 raise
@@ -206,6 +206,7 @@ def tmdb(films):
         if m.get("p"): f["p"] = m["p"]
         if m.get("t"): f["t"] = m["t"]
         if m.get("ov"): f["syn"] = m["ov"]
+        if m.get("pop"): f["pop"] = round(m["pop"], 1)  # популярность TMDB — порядок как на их сайте
 
 
 def http_json(url, data=None):
