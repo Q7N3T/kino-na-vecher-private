@@ -22,11 +22,11 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
       <h1 class="sentence">Сегодня у меня <button class="slot" data-focus="g-time" id="s-time">{TIMES[0].word}</button>, хочется <button class="slot" data-focus="g-mood" id="s-mood">{MOODS[0].word}</button>. Смотрим <button class="slot" data-focus="g-kind" id="s-kind">{KINDS[0].word}</button></h1>
       <div class="pickers">
         <div><p class="picker-l" id="l-time">Сколько есть времени</p>
-          <div class="chips scroll" role="group" aria-labelledby="l-time" id="g-time">{TIMES.map((t) => <button class="chip" data-time={t.v} aria-pressed={String(t.v === DEF.time)}>{t.chip}</button>)}</div></div>
+          <div class="chips" role="group" aria-labelledby="l-time" id="g-time">{TIMES.map((t) => <button class="chip" data-time={t.v} aria-pressed={String(t.v === DEF.time)}>{t.chip}</button>)}</div></div>
         <div><p class="picker-l" id="l-mood">Какое настроение</p>
-          <div class="chips scroll" role="group" aria-labelledby="l-mood" id="g-mood">{[...MOODS, { v: 'any', word: 'неважно' }].map((m) => <button class="chip" data-mood={m.v} aria-pressed={String(m.v === DEF.mood)}>{cap(m.word)}</button>)}</div></div>
+          <div class="chips" role="group" aria-labelledby="l-mood" id="g-mood">{[...MOODS, { v: 'any', word: 'неважно' }].map((m) => <button class="chip" data-mood={m.v} aria-pressed={String(m.v === DEF.mood)}>{cap(m.word)}</button>)}</div></div>
         <div><p class="picker-l" id="l-kind">Что смотрим</p>
-          <div class="chips scroll" role="group" aria-labelledby="l-kind" id="g-kind">{KINDS.map((k) => <button class="chip" data-kind={k.v} aria-pressed={String(k.v === DEF.kind)}>{k.chip}</button>)}</div></div>
+          <div class="chips" role="group" aria-labelledby="l-kind" id="g-kind">{KINDS.map((k) => <button class="chip" data-kind={k.v} aria-pressed={String(k.v === DEF.kind)}>{k.chip}</button>)}</div></div>
       </div>
     </div>
     <a class="pick" id="pick-card" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
