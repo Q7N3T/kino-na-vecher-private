@@ -20,12 +20,12 @@ const DECADES = [['', 'Все годы'], ['2020', '2020-е'], ['2010', '2010-е
     </header>
     <form class="filters" id="filters" data-kind={kind}>
       <div class="f-row">
-        <div class="chips" role="group" aria-label="Время">
+        <div class="chips scroll" role="group" aria-label="Время">
           {[999, 105, 130].map((v) => <button type="button" class="chip" data-time={v} aria-pressed={String(v === 999)}>{v === 999 ? 'Любая длина' : (isS ? 'Серия до ' : 'До ') + (v === 105 ? '1,5 часа' : '2 часов')}</button>)}
         </div>
       </div>
       <div class="f-row">
-        <div class="chips" role="group" aria-label="Настроение">
+        <div class="chips scroll" role="group" aria-label="Настроение">
           <button type="button" class="chip" data-mood="any" aria-pressed="true">Любое настроение</button>
           {MOODS.map((m) => <button type="button" class="chip" data-mood={m.v} aria-pressed="false">{cap(m.word)}</button>)}
         </div>

@@ -105,7 +105,7 @@ const jsonld = {
   {sim.length > 0 && (
     <section class="sec wrap" aria-labelledby="h-sim">
       <div class="sec-h"><h2 id="h-sim">Похожее</h2></div>
-      <div class="grid" set:html={sim.map((x, i) => cardHTML(x, base, i)).join('')}></div>
+      <div class="grid row" set:html={sim.map((x, i) => cardHTML(x, base, i)).join('')}></div>
     </section>
   )}
 </Base>
@@ -155,7 +155,47 @@ const jsonld = {
   .box h2 { font-size: 17px; margin-bottom: 14px; }
   .links { display: flex; flex-direction: column; gap: 10px; }
   .links a { text-decoration: none; }
-  @media (max-width: 760px) { .t-poster { flex-basis: 220px; max-width: 240px; } .stats .wide { grid-column: auto; } .face { width: 84px; height: 84px; } }
+  /* телефон: небольшой постер рядом с названием, всё остальное — во всю ширину */
+  @media (max-width: 760px) {
+    .hero-t .wrap { padding-top: 16px; padding-bottom: 32px; }
+    .crumbs { margin-bottom: 16px; }
+    .t-row { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 16px 16px; align-items: start; }
+    .t-info { display: contents; }
+    .t-poster { grid-column: 1; grid-row: 1 / span 2; min-width: 0; width: 112px; border-radius: 12px; }
+    .t-poster .ph { font-size: 14px; padding: 10px; }
+    .t-info > :nth-child(1) { grid-column: 2; grid-row: 2; align-self: start; }
+    .t-info > :nth-child(2) { grid-column: 2; grid-row: 1; align-self: end; }
+    .t-info > :nth-child(n+3) { grid-column: 1 / -1; }
+    .t-info .chips { gap: 6px; }
+    .t-info .chips .tag:not(:nth-child(-n+3)) { display: none; } /* на узком экране — статус и пара жанров */
+    .pill, .tag { font-size: 12px; padding: 5px 10px; }
+    h1 { font-size: 28px; line-height: 1.1; }
+    .t-orig { font-size: 15px; margin-top: 4px; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stats .wide { grid-column: 1 / -1; }
+    .stats div { padding: 12px 14px; }
+    .stats dd { font-size: 20px; }
+    .clock { padding: 14px 16px; gap: 14px; }
+    .clock b { font-size: 26px; }
+    .clock span { font-size: 14px; }
+    .acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .acts > :first-child { grid-column: 1 / -1; }
+    .acts .btn { padding: 0 12px; height: 48px; }
+    .t-body { padding-top: 32px; gap: 32px; }
+    .t-main { gap: 32px; }
+    .t-main h2, .box h2 { font-size: 20px; margin-bottom: 12px; }
+    .syn { font-size: 16px; }
+    /* актёры — лентой */
+    .cast { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 96px; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory;
+      margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut) 4px; scrollbar-width: none; }
+    .cast::-webkit-scrollbar { display: none; }
+    .cast li { scroll-snap-align: start; }
+    .face { width: 84px; height: 84px; }
+    .face b { font-size: 20px; }
+    .who { font-size: 13px; }
+    .who small { font-size: 12px; }
+    .seasons li { padding: 13px 16px; }
+  }
 </style>
 
 <script>

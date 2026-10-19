@@ -53,6 +53,7 @@ h1, h2, h3 { letter-spacing: -.015em; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; transition: filter .2s, transform .15s; }
 .btn:hover { color: var(--accent-ink); filter: brightness(1.08); }
 .btn:active { transform: scale(.97); }
+.btn svg { flex-shrink: 0; }
 .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line-2); font-weight: 500; }
 .btn.ghost:hover { border-color: var(--dim); }
 .btn[aria-pressed="true"].ghost { border-color: var(--accent); color: var(--accent); }
@@ -125,14 +126,44 @@ a.tag:hover { color: var(--text); border-color: var(--dim); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
 @media (max-width: 1100px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .colls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.top-search, .tabbar { display: none; }
+
+/* телефон: тонкая шапка, разделы в нижней панели, подборки — ленты, листаемые пальцем */
 @media (max-width: 760px) {
   :root { --gut: 16px; }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .top .wrap { flex-wrap: nowrap; padding-top: 10px; padding-bottom: 10px; }
+  .nav, .top .search { display: none; }
+  .top-search { display: grid; place-items: center; width: 44px; height: 44px; margin-left: auto; margin-right: -10px; border-radius: 50%; color: var(--text); }
+  .tabbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); background: rgba(13, 15, 20, .94); backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
+  .tabbar a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; min-height: 48px; justify-content: center; color: var(--dim); text-decoration: none; font-size: 11px; font-weight: 500; }
+  .tabbar a[aria-current="page"] { color: var(--accent); }
+  .tabbar a:active { transform: scale(.94); }
+
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 14px; }
-  .colls { grid-template-columns: minmax(0, 1fr); }
-  .nav { order: 3; flex-basis: 100%; overflow-x: auto; flex-wrap: nowrap; margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut); scrollbar-width: none; }
-  .search { order: 2; width: auto; flex: 1 1 160px; }
-  .top .login span { display: none; }
-  .sec { padding-top: 40px; padding-bottom: 40px; }
-  .sec-h h2 { font-size: 22px; }
+  /* лента: одна строка карточек с прокруткой вбок и «прилипанием» к краю */
+  .row { display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 42%; gap: 14px;
+    overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 var(--gut); overscroll-behavior-x: contain;
+    margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut) 4px; scrollbar-width: none; }
+  .row::-webkit-scrollbar, .chips.scroll::-webkit-scrollbar { display: none; }
+  .row > * { scroll-snap-align: start; }
+  .row .card { animation: none; }
+  .colls { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 78%; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 var(--gut);
+    margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut) 4px; scrollbar-width: none; }
+  .colls > * { scroll-snap-align: start; min-height: 150px; }
+  /* фильтры одной строкой */
+  .chips.scroll { flex-wrap: nowrap; overflow-x: auto; margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut); scrollbar-width: none; }
+  .chips.scroll > * { flex-shrink: 0; }
+  /* ряды фильтров лежат в CSS-сетке: без min-width: 0 строка кнопок растягивает колонку и всю страницу */
+  .pickers > *, .filters > *, .chips.scroll { min-width: 0; }
+  .chip { height: 40px; padding: 0 16px; font-size: 14px; }
+
+  .sec { padding-top: 36px; padding-bottom: 36px; }
+  .sec-h { margin-bottom: 16px; }
+  .sec-h h2 { font-size: 21px; }
+  .sec-h h2 small { display: block; margin: 4px 0 0; font-size: 14px; }
+  .page-h { padding-top: 28px; }
+  .foot .wrap { padding-top: 28px; padding-bottom: 28px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
