@@ -86,6 +86,8 @@ header.top{display:flex;justify-content:space-between;align-items:center;padding
 .search:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(233,185,73,.2)}
 .loadmore{display:flex;justify-content:center;padding:0 0 64px}
 .votes{color:var(--muted);font-weight:400;font-size:14px}
+.credit{color:var(--muted);font-size:12px;line-height:1.4;margin:10px 0 0;overflow-wrap:anywhere}
+.credit a{color:inherit}
 footer a{color:inherit}
 
 .empty{padding:40px 0 64px;max-width:48ch}
@@ -164,7 +166,7 @@ footer{color:var(--muted);font-size:13px;padding:0 0 32px}
     <span class="now" id="now"></span>
   </header>
   <main id="app"></main>
-  <footer>Information courtesy of IMDb (<a href="https://www.imdb.com" target="_blank" rel="noopener">imdb.com</a>). Used with permission.<span id="tmdb" hidden> Постеры и описания: <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>. This product uses the TMDB API but is not endorsed or certified by TMDB.</span></footer>
+  <footer>Information courtesy of IMDb (<a href="https://www.imdb.com" target="_blank" rel="noopener">imdb.com</a>). Used with permission.<span id="wm" hidden> Свободные изображения: <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>, авторы и лицензии указаны на страницах.</span><span id="tmdb" hidden> Постеры и описания: <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>. This product uses the TMDB API but is not endorsed or certified by TMDB.</span></footer>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -223,7 +225,19 @@ function episodesTonight(f){return state.time<999?Math.floor(state.time/f.min):0
 function hue(id){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))%360;return h}
 
 function poster(f,big){
-  if(f.p)return `<img class="poster${big?" big":""}" src="${IMG}${big?"w500":"w342"}${f.p}" alt="Постер: «${esc(f.t)}»" loading="lazy">`;
+  const src=f.p?`${IMG}${big?"w500":"w342"}${f.p}`:f.w?`https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(f.w)}?width=${big?500:342}`:"";
+  if(src)return `<img class="poster${big?" big":""}" src="${src}" alt="Постер: «${esc(f.t)}»" loading="lazy" data-id="${f.id}"${big?" data-big":""} onerror="noPoster(this)">`;
+  return placeholder(f,big);
+}
+// картинка не загрузилась — показываем фирменную заглушку
+function noPoster(img){const f=BY_ID.get(img.dataset.id);if(f)img.outerHTML=placeholder(f,img.hasAttribute("data-big"))}
+// свободные изображения с Commons требуют подписи: автор, лицензия, ссылка на файл
+function credit(f){
+  if(f.p||!f.w)return "";
+  const who=[f.wa,f.wl].filter(Boolean).map(esc).join(", ");
+  return `<p class="credit">${f.wk?"Изображение":"Постер"}: <a href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(f.w)}" target="_blank" rel="noopener">${who||"Wikimedia Commons"}</a>${who?" · Wikimedia Commons":""}</p>`;
+}
+function placeholder(f,big){
   return `<div class="poster ph${big?" big":""}" style="--h:${hue(f.id)}" role="img" aria-label="${esc(f.t)}"><b>${esc(f.t)}</b><small>${f.k?kindName(f)+", ":""}${years(f)}</small></div>`;
 }
 function card(f,i){
@@ -309,7 +323,7 @@ function renderFilm(id){
   app.innerHTML=`
   <a class="back" href="#">← К подборке на вечер</a>
   <article class="film">
-    <aside>${poster(f,true)}</aside>
+    <aside>${poster(f,true)}${credit(f)}</aside>
     <div class="info">
       <h1>${esc(f.t)}</h1>
       ${f.o?`<p class="orig">${esc(f.o)}</p>`:""}
@@ -389,6 +403,7 @@ function roulette(){
 }
 function tick(){const d=new Date();document.getElementById("now").textContent="Сейчас "+pad(d.getHours())+":"+pad(d.getMinutes())}
 if(FILMS.some(f=>f.p))document.getElementById("tmdb").hidden=false;
+if(FILMS.some(f=>f.w&&!f.p))document.getElementById("wm").hidden=false;
 window.addEventListener("hashchange",route);
 tick();setInterval(tick,30000);
 route();
