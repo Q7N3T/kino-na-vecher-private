@@ -176,7 +176,8 @@ const FILMS = window.FILMS || [];
 const BY_ID = new Map(FILMS.map(f=>[f.id,f]));
 // взвешенный рейтинг, как в топ-250 IMDb: фильмы с небольшим числом оценок тянутся к среднему
 for(const f of FILMS)f.s=(f.v*f.imdb+100000*6.8)/(f.v+100000);
-const IMG = "https://image.tmdb.org/t/p/";
+// постеры TMDB идут через прокси wsrv.nl: image.tmdb.org открывается не везде, а wsrv ещё и сжимает в WebP
+const tmdbImg=(p,w)=>"https://wsrv.nl/?url="+encodeURIComponent("https://image.tmdb.org/t/p/w500"+p)+"&w="+w+"&output=webp";
 const PAGE = 48;
 const TIMES = [
  {v:105,word:"около полутора часов",chip:"Около 1,5 часа",per:"полтора часа"},
@@ -225,7 +226,7 @@ function episodesTonight(f){return state.time<999?Math.floor(state.time/f.min):0
 function hue(id){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))%360;return h}
 
 function poster(f,big){
-  const src=f.p?`${IMG}${big?"w500":"w342"}${f.p}`:f.w?`https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(f.w)}?width=${big?500:342}`:"";
+  const src=f.p?tmdbImg(f.p,big?500:342):f.w?`https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(f.w)}?width=${big?500:342}`:"";
   if(src)return `<img class="poster${big?" big":""}" src="${src}" alt="Постер: «${esc(f.t)}»" loading="lazy" data-id="${f.id}"${big?" data-big":""} onerror="noPoster(this)">`;
   return placeholder(f,big);
 }
