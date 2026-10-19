@@ -8,9 +8,10 @@ const { films } = load();
 const DEF = { time: 105, mood: 'laugh', kind: 'any' };
 const tonight = films.filter((f) => f.min <= DEF.time && f.m.includes(DEF.mood)).slice(0, 12);
 const popular = {
-  all: films.slice(0, 12),
-  movie: films.filter((f) => !f.k).slice(0, 12),
-  series: films.filter((f) => f.k).slice(0, 12),
+  // с запасом: карточки, которые уже есть в «Подходит на сегодня», скрываются, а следующие встают на их место
+  all: films.slice(0, 24),
+  movie: films.filter((f) => !f.k).slice(0, 24),
+  series: films.filter((f) => f.k).slice(0, 24),
 };
 const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 100000).length }));
 ---
@@ -120,6 +121,7 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
     list = all.filter((f) => matches(f, state));
     const forms = KINDS.find((k) => k.v === state.kind)!.forms;
     $('tonight-n').textContent = list.length ? list.length.toLocaleString('ru-RU') + ' ' + plural(list.length, ...forms) : '';
+    dedupe(new Set(list.slice(0, 12).map((f) => f.id)));
     $('tonight').innerHTML = list.length
       ? list.slice(0, 12).map((f, i) => cardHTML(f, base, i)).join('')
       : '<div class="empty"><h2>Под такой вечер ничего нет</h2><p>Дайте себе чуть больше времени или выберите другое настроение.</p></div>';
@@ -160,6 +162,19 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
     const s = $(changed); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop');
     update();
   });
+
+  // «Популярное сейчас» без повторов с подборкой выше: по 12 карточек, уже показанные пропускаем
+  function dedupe(shown: Set<string>) {
+    document.querySelectorAll<HTMLElement>('[data-pop]').forEach((g) => {
+      let n = 0;
+      g.querySelectorAll<HTMLElement>('.card').forEach((c) => {
+        const skip = shown.has(c.dataset.id!) || n >= 12;
+        c.hidden = skip;
+        if (!skip) n++;
+      });
+    });
+  }
+  dedupe(new Set([...document.querySelectorAll<HTMLElement>('#tonight .card')].map((c) => c.dataset.id!)));
 
   label();
   update();
