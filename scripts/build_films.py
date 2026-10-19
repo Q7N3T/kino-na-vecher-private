@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Собирает data/films.js из открытых датасетов IMDb (+ постеры и описания из TMDB).
+"""Собирает data/films.js — фильмы и сериалы из открытых датасетов IMDb (+ постеры и описания из TMDB).
 
 Датасеты скачиваются с datasets.imdbws.com в data/.imdb/ (в git не попадают).
 
   python3 scripts/build_films.py              # база IMDb
   python3 scripts/build_films.py --tmdb       # дополнить постерами и описаниями из TMDB
                                               # (нужна переменная TMDB_API_KEY)
-Порог по числу оценок: --min-votes (по умолчанию 25000).
+Порог по числу оценок: --min-votes (по умолчанию 10000).
 """
 import argparse, concurrent.futures as cf, gzip, json, os, sys, time, urllib.parse, urllib.request
 
@@ -15,6 +15,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "films.js")
 CACHE = os.path.join(ROOT, "data", "tmdb-cache.json")
 DL = os.path.join(ROOT, "data", ".imdb")
+
+KINDS = {"movie": None, "tvSeries": "s", "tvMiniSeries": "ms"}  # None — фильм
 
 GENRES_RU = {
     "Action": "боевик", "Adventure": "приключения", "Animation": "мультфильм", "Biography": "биография",
@@ -87,12 +89,40 @@ def build_imdb(min_votes):
     print("Названия и жанры…", file=sys.stderr)
     films = {}
     for r in rows("title.basics"):
-        tid, ttype, primary, orig, adult, year, _, runtime, genres = r
-        if tid not in rating or ttype != "movie" or adult == "1" or nn(runtime) is None or nn(year) is None:
+        tid, ttype, primary, orig, adult, year, end, runtime, genres = r
+        if tid not in rating or ttype not in KINDS or adult == "1" or nn(year) is None:
+            continue
+        if ttype == "movie" and nn(runtime) is None:
             continue
         g = nn(genres).split(",") if nn(genres) else []
-        films[tid] = {"id": tid, "t": primary, "o": orig, "y": int(year), "min": int(runtime),
-                      "g": g, "imdb": rating[tid][0], "v": rating[tid][1]}
+        f = {"id": tid, "t": primary, "o": orig, "y": int(year), "g": g, "imdb": rating[tid][0], "v": rating[tid][1]}
+        if nn(runtime): f["min"] = int(runtime)
+        if KINDS[ttype]:
+            f["k"] = KINDS[ttype]
+            if nn(end): f["ye"] = int(end)
+        films[tid] = f
+
+    print("Серии…", file=sys.stderr)
+    seasons, eps = {}, {}
+    for r in rows("title.episode"):
+        eid, parent, season, _ = r
+        if parent in films:
+            films[parent]["ep"] = films[parent].get("ep", 0) + 1
+            if nn(season): seasons.setdefault(parent, set()).add(season)
+            if "min" not in films[parent]: eps[eid] = parent
+    for tid, ss in seasons.items():
+        films[tid]["ss"] = len(ss)
+    if eps:
+        # у части сериалов длительность не указана — берём медиану по их сериям
+        print("Длительность серий…", file=sys.stderr)
+        lens = {}
+        for r in rows("title.basics"):
+            if r[0] in eps and nn(r[7]):
+                lens.setdefault(eps[r[0]], []).append(int(r[7]))
+        for tid, l in lens.items():
+            films[tid]["min"] = sorted(l)[len(l) // 2]
+    for tid in [t for t, f in films.items() if "min" not in f]:
+        del films[tid]
 
     print("Русские названия…", file=sys.stderr)
     ru = {}
@@ -108,7 +138,7 @@ def build_imdb(min_votes):
     print("Режиссёры…", file=sys.stderr)
     need = set()
     for r in rows("title.crew"):
-        if r[0] in films and nn(r[1]):
+        if r[0] in films and nn(r[1]) and "k" not in films[r[0]]:  # у сериалов это режиссёры отдельных серий
             films[r[0]]["d"] = r[1].split(",")[:3]
             need.update(films[r[0]]["d"])
 
@@ -149,9 +179,10 @@ def tmdb(films):
         for attempt in range(4):
             try:
                 with urllib.request.urlopen(urllib.request.Request(url, headers=auth), timeout=30) as r:
-                    res = json.load(r).get("movie_results") or []
+                    j = json.load(r)
+                res = j.get("movie_results") or j.get("tv_results") or []
                 m = res[0] if res else {}
-                return tid, {"p": m.get("poster_path"), "t": m.get("title"), "ov": m.get("overview")}
+                return tid, {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview")}
             except urllib.error.HTTPError as e:
                 if e.code == 429: time.sleep(2 ** attempt); continue
                 raise
@@ -203,7 +234,7 @@ def load_existing():
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--min-votes", type=int, default=25000)
+    ap.add_argument("--min-votes", type=int, default=10000)
     ap.add_argument("--tmdb", action="store_true", help="дополнить уже собранную базу данными TMDB")
     a = ap.parse_args()
     if a.tmdb:

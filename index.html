@@ -110,6 +110,7 @@ footer a{color:inherit}
 .tags{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 32px}
 .tag{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;color:var(--muted);transition:border-color .2s,color .2s}
 .tag:hover{border-color:var(--muted);color:var(--text)}
+.tag.kind{border-color:var(--accent);color:var(--accent)}
 .actions{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 40px}
 .block{margin:0 0 32px;max-width:62ch}
 .block h2{font-size:15px;font-weight:500;color:var(--muted);margin:0 0 10px}
@@ -145,6 +146,7 @@ footer{color:var(--muted);font-size:13px;padding:0 0 32px}
 .enter .pickers>div{animation:rise .6s cubic-bezier(.2,.8,.2,1) both}
 .enter .pickers>div:nth-child(1){animation-delay:.12s}
 .enter .pickers>div:nth-child(2){animation-delay:.22s}
+.enter .pickers>div:nth-child(3){animation-delay:.32s}
 .grid .card{animation:rise .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*55ms)}
 .reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
 .reveal.in{opacity:1;transform:none}
@@ -175,8 +177,8 @@ for(const f of FILMS)f.s=(f.v*f.imdb+100000*6.8)/(f.v+100000);
 const IMG = "https://image.tmdb.org/t/p/";
 const PAGE = 48;
 const TIMES = [
- {v:105,word:"около полутора часов",chip:"Около 1,5 часа"},
- {v:130,word:"часа два",chip:"Часа два"},
+ {v:105,word:"около полутора часов",chip:"Около 1,5 часа",per:"полтора часа"},
+ {v:130,word:"часа два",chip:"Часа два",per:"два часа"},
  {v:999,word:"весь вечер",chip:"Весь вечер"}
 ];
 const MOODS = [
@@ -187,8 +189,13 @@ const MOODS = [
  {v:"inspire",word:"вдохновиться",tag:"Вдохновляет"},
  {v:"any",word:"чего угодно",tag:""}
 ];
-const state = {time:105, mood:"laugh", q:""};
-try{const s=JSON.parse(sessionStorage.getItem("knv-filter")||"null");if(s){state.time=s.time;state.mood=s.mood}}catch(e){}
+const KINDS = [
+ {v:"movie",word:"фильм",chip:"Фильм",forms:["фильм","фильма","фильмов"]},
+ {v:"series",word:"сериал",chip:"Сериал",forms:["сериал","сериала","сериалов"]},
+ {v:"any",word:"что угодно",chip:"Неважно",forms:["фильм или сериал","фильма и сериала","фильмов и сериалов"]}
+];
+const state = {time:105, mood:"laugh", kind:"any", q:""};
+try{const s=JSON.parse(sessionStorage.getItem("knv-filter")||"null");if(s){state.time=s.time;state.mood=s.mood;state.kind=s.kind||"any"}}catch(e){}
 const app = document.getElementById("app");
 let view=null, changed=null, picking=false, list=[], shown=0;
 const calm=matchMedia("(prefers-reduced-motion: reduce)");
@@ -208,16 +215,20 @@ function norm(s){return String(s||"").toLowerCase().replace(/ё/g,"е")}
 // имена в базе латиницей: «нолан» ищем ещё и как «nolan»
 const TR={а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ж:"zh",з:"z",и:"i",й:"y",к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",х:"h",ц:"ts",ч:"ch",ш:"sh",щ:"sch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya"};
 function translit(s){return [...s].map(c=>c in TR?TR[c]:c).join("")}
-function fits(f){return f.min<=state.time&&(state.mood==="any"||f.m.includes(state.mood))}
+function fits(f){return f.min<=state.time&&(state.mood==="any"||f.m.includes(state.mood))&&(state.kind==="any"||(state.kind==="series")===!!f.k)}
+function years(f){return !f.k||f.ye===f.y?String(f.y):f.ye?f.y+"–"+f.ye:"с "+f.y}
+function kindName(f){return f.k==="ms"?"Мини-сериал":f.k?"Сериал":"Фильм"}
+// сколько серий целиком помещается в выбранное время
+function episodesTonight(f){return state.time<999?Math.floor(state.time/f.min):0}
 function hue(id){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))%360;return h}
 
 function poster(f,big){
-  if(f.p)return `<img class="poster${big?" big":""}" src="${IMG}${big?"w500":"w342"}${f.p}" alt="Постер фильма «${esc(f.t)}»" loading="lazy">`;
-  return `<div class="poster ph${big?" big":""}" style="--h:${hue(f.id)}" role="img" aria-label="${esc(f.t)}"><b>${esc(f.t)}</b><small>${f.y}</small></div>`;
+  if(f.p)return `<img class="poster${big?" big":""}" src="${IMG}${big?"w500":"w342"}${f.p}" alt="Постер: «${esc(f.t)}»" loading="lazy">`;
+  return `<div class="poster ph${big?" big":""}" style="--h:${hue(f.id)}" role="img" aria-label="${esc(f.t)}"><b>${esc(f.t)}</b><small>${f.k?kindName(f)+", ":""}${years(f)}</small></div>`;
 }
 function card(f,i){
   return `<a class="card" href="#film/${f.id}" data-id="${f.id}" style="--i:${(i||0)%PAGE>12?12:(i||0)%PAGE}">${poster(f)}
-    <h3>${esc(f.t)}</h3><p>${f.y} · ${dur(f.min)}, финал в <span class="end">${endTime(f.min)}</span></p></a>`;
+    <h3>${esc(f.t)}</h3><p>${f.k?`${kindName(f)} · ${years(f)}<br>серия ${dur(f.min)}, финал в`:`${f.y} · ${dur(f.min)}, финал в`} <span class="end">${endTime(f.min)}</span></p></a>`;
 }
 function getToday(){
   try{const s=JSON.parse(localStorage.getItem("knv-today")||"null");
@@ -226,26 +237,28 @@ function getToday(){
 }
 
 function renderCatalog(){
-  const t=TIMES.find(x=>x.v===state.time)||TIMES[0], m=MOODS.find(x=>x.v===state.mood)||MOODS[0];
+  const t=TIMES.find(x=>x.v===state.time)||TIMES[0], m=MOODS.find(x=>x.v===state.mood)||MOODS[0], k=KINDS.find(x=>x.v===state.kind)||KINDS[2];
   const today=getToday();
-  const enter=view!=="catalog", popT=!enter&&changed==="time", popM=!enter&&changed==="mood";
+  const enter=view!=="catalog", popT=!enter&&changed==="time", popM=!enter&&changed==="mood", popK=!enter&&changed==="kind";
   view="catalog";changed=null;
   document.title="Кино на вечер";
   app.innerHTML=`
   <section class="hero${enter?" enter":""}">
-    <h1 class="sentence">Сегодня у меня <button class="slot${popT?" pop":""}" data-focus="lt">${t.word}</button>, и хочется <button class="slot${popM?" pop":""}" data-focus="lm">${m.word}</button></h1>
+    <h1 class="sentence">Сегодня у меня <button class="slot${popT?" pop":""}" data-focus="lt">${t.word}</button>, и хочется <button class="slot${popM?" pop":""}" data-focus="lm">${m.word}</button>. Смотрим <button class="slot${popK?" pop":""}" data-focus="lk">${k.word}</button></h1>
     <div class="pickers">
       <div><p class="picker-label" id="lt">Сколько есть времени</p>
         <div class="chips" role="group" aria-labelledby="lt">${TIMES.map(x=>`<button class="chip" data-time="${x.v}" aria-pressed="${x.v===state.time}">${x.chip}</button>`).join("")}</div></div>
       <div><p class="picker-label" id="lm">Какое настроение</p>
         <div class="chips" role="group" aria-labelledby="lm">${MOODS.map(x=>`<button class="chip" data-mood="${x.v}" aria-pressed="${x.v===state.mood}">${x.v==="any"?"Неважно":cap(x.word)}</button>`).join("")}</div></div>
+      <div><p class="picker-label" id="lk">Что смотрим</p>
+        <div class="chips" role="group" aria-labelledby="lk">${KINDS.map(x=>`<button class="chip" data-kind="${x.v}" aria-pressed="${x.v===state.kind}">${x.chip}</button>`).join("")}</div></div>
     </div>
     <div class="today${today?" on":""}">${today?`<span>Вы уже выбрали на сегодня: <a href="#film/${today.id}">${esc(today.t)}</a></span><span style="color:var(--muted)">Финал в ${endTime(today.min)}, если начать сейчас</span>`:""}</div>
   </section>
   <div class="bar">
     <p class="count" id="count"></p>
     <div class="tools">
-      <input class="search" id="q" type="search" placeholder="Найти фильм, режиссёра, актёра" value="${esc(state.q)}" aria-label="Поиск по базе">
+      <input class="search" id="q" type="search" placeholder="Найти фильм, сериал, актёра" value="${esc(state.q)}" aria-label="Поиск по базе">
       <button class="btn" id="pick" hidden>Выбрать за меня</button>
     </div>
   </div>
@@ -262,13 +275,14 @@ function renderResults(){
   list.sort((a,b)=>b.s-a.s);
   shown=0;
   const n=list.length;
-  document.getElementById("count").innerHTML=n?`${num(n)} ${plural(n,"фильм","фильма","фильмов")} <span>${q?"по запросу":"на этот вечер"}</span>`:(q?"Ничего не нашлось":"Пока ничего");
+  const forms=(q?KINDS[2]:KINDS.find(x=>x.v===state.kind)||KINDS[2]).forms;
+  document.getElementById("count").innerHTML=n?`${num(n)} ${plural(n,...forms)} <span>${q?"по запросу":"на этот вечер"}</span>`:(q?"Ничего не нашлось":"Пока ничего");
   document.getElementById("pick").hidden=n<2;
   const r=document.getElementById("results");
   if(more)more.disconnect();
   if(!FILMS.length){r.innerHTML=`<div class="empty"><h2>База фильмов не загрузилась</h2><p>Файл data/films.js не найден. Соберите его скриптом scripts/build_films.py.</p></div>`;return}
-  if(!n){r.innerHTML=q?`<div class="empty"><h2>Такого фильма нет в базе</h2><p>В базе фильмы, у которых на IMDb больше 25 тысяч оценок. Попробуйте другое название — на русском или в оригинале.</p></div>`
-    :`<div class="empty"><h2>Под такой вечер фильмов нет</h2><p>Попробуйте дать себе чуть больше времени или выбрать другое настроение.</p><button class="btn ghost" data-time="999">Показать на весь вечер</button></div>`;return}
+  if(!n){r.innerHTML=q?`<div class="empty"><h2>Такого нет в базе</h2><p>В базе фильмы и сериалы, у которых на IMDb больше 10 тысяч оценок. Попробуйте другое название — на русском или в оригинале.</p></div>`
+    :`<div class="empty"><h2>Под такой вечер ничего нет</h2><p>Попробуйте дать себе чуть больше времени, выбрать другое настроение или смотреть что угодно.</p><button class="btn ghost" data-time="999">Показать на весь вечер</button></div>`;return}
   r.innerHTML=`<div class="grid" id="grid"></div><div class="loadmore" id="loadmore"><button class="btn ghost" id="moreBtn">Показать ещё</button></div>`;
   showMore();
 }
@@ -289,25 +303,27 @@ function renderFilm(id){
   document.title=f.t+" — Кино на вечер";
   const today=getToday(), chosen=today&&today.id===f.id;
   // похожие: общие жанры весят больше общих настроений, плюс бонус за рейтинг
-  const score=x=>x.genres.filter(g=>f.genres.includes(g)).length*2+x.m.filter(m=>f.m.includes(m)).length+(x.s-7)*2;
+  const score=x=>x.genres.filter(g=>f.genres.includes(g)).length*2+x.m.filter(m=>f.m.includes(m)).length+(x.s-7)*2+(!x.k===!f.k?3:0);
   const similar=FILMS.filter(x=>x.id!==f.id).map(x=>[score(x),x]).sort((a,b)=>b[0]-a[0]).slice(0,4).map(x=>x[1]);
   const yt="https://www.youtube.com/results?search_query="+encodeURIComponent(`${f.o||f.t} ${f.y} trailer`);
   app.innerHTML=`
-  <a class="back" href="#">← Все фильмы на вечер</a>
+  <a class="back" href="#">← К подборке на вечер</a>
   <article class="film">
     <aside>${poster(f,true)}</aside>
     <div class="info">
       <h1>${esc(f.t)}</h1>
       ${f.o?`<p class="orig">${esc(f.o)}</p>`:""}
       <dl class="facts">
-        <div><dt>Год</dt><dd>${f.y}</dd></div>
+        <div><dt>${f.k&&f.ye!==f.y?"Годы":"Год"}</dt><dd>${years(f)}</dd></div>
+        ${f.ss?`<div><dt>Сезонов</dt><dd>${f.ss}</dd></div>`:""}
+        ${f.ep?`<div><dt>Серий</dt><dd>${num(f.ep)}</dd></div>`:""}
         ${f.d.length?`<div><dt>${f.d.length>1?"Режиссёры":"Режиссёр"}</dt><dd>${esc(f.d.join(", "))}</dd></div>`:""}
-        <div><dt>Длительность</dt><dd>${dur(f.min)}</dd></div>
+        <div><dt>${f.k?"Серия":"Длительность"}</dt><dd>${dur(f.min)}</dd></div>
         <div><dt>IMDb</dt><dd>${f.imdb.toFixed(1)} <span class="votes">· ${num(f.v)} ${plural(f.v,"оценка","оценки","оценок")}</span></dd></div>
       </dl>
-      <div class="clock"><b>${endTime(f.min)}</b><span>закончится, если начать прямо сейчас</span></div>
+      <div class="clock"><b>${endTime(f.min)}</b><span>${f.k?`закончится первая серия, если начать прямо сейчас${episodesTonight(f)>1?`. За ${TIMES.find(x=>x.v===state.time).per} успеете ${episodesTonight(f)} ${plural(episodesTonight(f),"серию","серии","серий")}`:""}`:"закончится, если начать прямо сейчас"}</span></div>
       ${f.syn?`<p class="syn">${esc(f.syn)}</p>`:""}
-      <div class="tags">${f.m.map(m=>`<span class="tag">${MOODS.find(x=>x.v===m).tag}</span>`).join("")}${f.genres.map(g=>`<span class="tag">${esc(cap(g))}</span>`).join("")}</div>
+      <div class="tags">${f.k?`<span class="tag kind">${kindName(f)}</span>`:""}${f.m.map(m=>`<span class="tag">${MOODS.find(x=>x.v===m).tag}</span>`).join("")}${f.genres.map(g=>`<span class="tag">${esc(cap(g))}</span>`).join("")}</div>
       <div class="actions">
         <button class="btn" id="choose" aria-pressed="${chosen}">${chosen?"Выбрано на сегодня":"Смотрю сегодня"}</button>
         <a class="btn ghost" href="${yt}" target="_blank" rel="noopener">Найти трейлер</a>
@@ -316,28 +332,30 @@ function renderFilm(id){
       ${f.cast.length?`<div class="block"><h2>В ролях</h2><ul class="cast">${f.cast.map(p=>`<li>${esc(p.n)}${p.r?`<span>${esc(p.r)}</span>`:""}</li>`).join("")}</ul></div>`:""}
     </div>
   </article>
-  ${similar.length?`<section class="more reveal"><h2>Похожие фильмы</h2><div class="grid">${similar.map((f,i)=>card(f,i)).join("")}</div></section>`:""}`;
+  ${similar.length?`<section class="more reveal"><h2>Похожее</h2><div class="grid">${similar.map((f,i)=>card(f,i)).join("")}</div></section>`:""}`;
   app.querySelectorAll(".info>*").forEach((el,i)=>el.style.setProperty("--i",i));
   window.scrollTo(0,0);
 }
 
 function route(){
   const h=location.hash.replace(/^#/,"");
+  clearTimeout(app.qt);
   if(h.startsWith("film/"))renderFilm(h.slice(5)); else renderCatalog();
   observe();
 }
-function save(){try{sessionStorage.setItem("knv-filter",JSON.stringify({time:state.time,mood:state.mood}))}catch(e){}}
+function save(){try{sessionStorage.setItem("knv-filter",JSON.stringify({time:state.time,mood:state.mood,kind:state.kind}))}catch(e){}}
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),2200)}
 
 app.addEventListener("input",e=>{
   if(e.target.id!=="q")return;
-  clearTimeout(app.qt);app.qt=setTimeout(()=>{state.q=e.target.value;renderResults()},150);
+  clearTimeout(app.qt);app.qt=setTimeout(()=>{state.q=e.target.value;if(view==="catalog")renderResults()},150);
 });
 app.addEventListener("click",e=>{
   const el=e.target.closest("button");if(!el)return;
   if(picking)return;
   if(el.dataset.time){if(state.time!==+el.dataset.time)changed="time";state.time=+el.dataset.time;state.q="";save();renderCatalog();observe();return}
   if(el.dataset.mood){if(state.mood!==el.dataset.mood)changed="mood";state.mood=el.dataset.mood;state.q="";save();renderCatalog();observe();return}
+  if(el.dataset.kind){if(state.kind!==el.dataset.kind)changed="kind";state.kind=el.dataset.kind;state.q="";save();renderCatalog();observe();return}
   if(el.dataset.focus){const g=document.querySelector(`[aria-labelledby="${el.dataset.focus}"]`);
     (g.querySelector('[aria-pressed="true"]')||g.querySelector("button")).focus();return}
   if(el.id==="moreBtn"){showMore();return}
