@@ -77,14 +77,15 @@ header.top{display:flex;justify-content:space-between;align-items:center;padding
 .poster.ph{display:flex;flex-direction:column;justify-content:flex-end;gap:6px;padding:14px;overflow:hidden;position:relative;
   background:radial-gradient(120% 80% at 20% 0%,hsl(var(--h) 45% 32%),transparent 60%),linear-gradient(160deg,hsl(var(--h) 35% 20%),hsl(calc(var(--h) + 40) 30% 11%))}
 .poster.ph::before{content:"";position:absolute;inset:10px;border:1px solid hsl(var(--h) 40% 60% / .25);border-radius:4px}
-.poster.ph b{font-family:var(--display);font-weight:500;font-size:17px;line-height:1.15;position:relative;overflow-wrap:anywhere}
+.poster.ph b{font-family:var(--display);font-weight:500;font-size:17px;line-height:1.15;position:relative;overflow-wrap:break-word;hyphens:auto}
 .poster.ph small{color:hsl(var(--h) 30% 80% / .75);position:relative}
 .poster.ph.big b{font-size:30px}
 .tools{display:flex;gap:12px;align-items:center}
 .search{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:11px 18px;font:inherit;font-size:15px;color:var(--text);width:min(320px,100%);transition:border-color .2s,box-shadow .2s}
 .search::placeholder{color:var(--muted)}
 .search:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(233,185,73,.2)}
-.loadmore{display:flex;justify-content:center;padding:0 0 64px}
+.loadmore{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0 64px}
+.loadmore small{color:var(--muted);font-size:13px}
 .votes{color:var(--muted);font-weight:400;font-size:14px}
 .credit{color:var(--muted);font-size:12px;line-height:1.4;margin:10px 0 0;overflow-wrap:anywhere}
 .credit a{color:inherit}
@@ -123,7 +124,15 @@ footer a{color:inherit}
 
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--text);color:var(--bg);padding:12px 20px;border-radius:999px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
 .toast.on{opacity:1;transform:translate(-50%,0)}
-footer{color:var(--muted);font-size:13px;padding:0 0 32px}
+footer.site{display:flex;justify-content:space-between;gap:24px 48px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:24px;padding:32px 0 calc(40px + env(safe-area-inset-bottom,0px));color:var(--muted);font-size:13px;line-height:1.6}
+.foot-main{max-width:60ch;display:grid;gap:10px}
+.foot-main p{margin:0}
+.foot-main .logo{color:var(--text);margin-bottom:4px}
+.foot-contact{display:grid;gap:4px;align-content:start}
+.foot-contact small{font-size:13px}
+.foot-contact #contact{color:var(--text);font-size:16px;font-weight:500}
+.foot-contact a{color:var(--accent);text-decoration:none;border-bottom:1px solid currentColor;transition:opacity .2s}
+.foot-contact a:hover{opacity:.8}
 
 @media (max-width:760px){
   .wrap{padding:0 18px}
@@ -166,7 +175,19 @@ footer{color:var(--muted);font-size:13px;padding:0 0 32px}
     <span class="now" id="now"></span>
   </header>
   <main id="app"></main>
-  <footer>Information courtesy of IMDb (<a href="https://www.imdb.com" target="_blank" rel="noopener">imdb.com</a>). Used with permission.<span id="wm" hidden> Свободные изображения: <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>, авторы и лицензии указаны на страницах.</span><span id="tmdb" hidden> Постеры и описания: <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>. This product uses the TMDB API but is not endorsed or certified by TMDB.</span></footer>
+  <footer class="site">
+    <div class="foot-main">
+      <a class="logo" href="#"><i aria-hidden="true"></i>Кино на вечер</a>
+      <p>Информация о фильмах и сериалах предоставлена <a href="https://www.imdb.com" target="_blank" rel="noopener">IMDb</a> и используется с их разрешения.<br>
+        <span lang="en">Information courtesy of IMDb (<a href="https://www.imdb.com" target="_blank" rel="noopener">https://www.imdb.com</a>). Used with permission.</span></p>
+      <p id="wm" hidden>Свободные изображения — <a href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a>, авторы и лицензии указаны на страницах фильмов.</p>
+      <p id="tmdb" hidden>Постеры и описания — <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>. <span lang="en">This product uses the TMDB API but is not endorsed or certified by TMDB.</span></p>
+    </div>
+    <div class="foot-contact">
+      <small>Сотрудничество</small>
+      <span id="contact">скоро</span>
+    </div>
+  </footer>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -178,7 +199,8 @@ const BY_ID = new Map(FILMS.map(f=>[f.id,f]));
 for(const f of FILMS)f.s=(f.v*f.imdb+100000*6.8)/(f.v+100000);
 // постеры TMDB идут через прокси wsrv.nl: image.tmdb.org открывается не везде, а wsrv ещё и сжимает в WebP
 const tmdbImg=(p,w)=>"https://wsrv.nl/?url="+encodeURIComponent("https://image.tmdb.org/t/p/w500"+p)+"&w="+w+"&output=webp";
-const PAGE = 48;
+const FIRST = 10, PAGE = 20;  // сколько карточек сразу и сколько добавляет «Показать ещё»
+const CONTACT = "";  // почта для сотрудничества, например "hello@example.ru"
 const TIMES = [
  {v:105,word:"около полутора часов",chip:"Около 1,5 часа",per:"полтора часа"},
  {v:130,word:"часа два",chip:"Часа два",per:"два часа"},
@@ -204,12 +226,10 @@ let view=null, changed=null, picking=false, list=[], shown=0;
 const calm=matchMedia("(prefers-reduced-motion: reduce)");
 const io="IntersectionObserver" in window?new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}}),{threshold:.08}):null;
 function observe(){app.querySelectorAll(".reveal").forEach(el=>io?io.observe(el):el.classList.add("in"))}
-// подгрузка следующей страницы, когда низ списка показался на экране
-const more="IntersectionObserver" in window?new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))showMore()},{rootMargin:"600px"}):null;
 
 const pad = n => String(n).padStart(2,"0");
 function endTime(min){const d=new Date(Date.now()+min*60000);return pad(d.getHours())+":"+pad(d.getMinutes())}
-function dur(min){const h=Math.floor(min/60),m=min%60;return (h?h+" ч ":"")+(m?m+" мин":"")}
+function dur(min){const h=Math.floor(min/60),m=min%60;return ((h?h+" ч ":"")+(m?m+" мин":"")).trim()}
 function plural(n,a,b,c){const m10=n%10,m100=n%100;if(m10===1&&m100!==11)return a;if(m10>=2&&m10<=4&&(m100<10||m100>=20))return b;return c}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function cap(s){return s[0].toUpperCase()+s.slice(1)}
@@ -242,7 +262,7 @@ function placeholder(f,big){
   return `<div class="poster ph${big?" big":""}" style="--h:${hue(f.id)}" role="img" aria-label="${esc(f.t)}"><b>${esc(f.t)}</b><small>${f.k?kindName(f)+", ":""}${years(f)}</small></div>`;
 }
 function card(f,i){
-  return `<a class="card" href="#film/${f.id}" data-id="${f.id}" style="--i:${(i||0)%PAGE>12?12:(i||0)%PAGE}">${poster(f)}
+  return `<a class="card" href="#film/${f.id}" data-id="${f.id}" style="--i:${Math.min((i||0)<FIRST?i||0:((i||0)-FIRST)%PAGE,12)}">${poster(f)}
     <h3>${esc(f.t)}</h3><p>${f.k?`${kindName(f)} · ${years(f)}<br>серия ${dur(f.min)}, финал в`:`${f.y} · ${dur(f.min)}, финал в`} <span class="end">${endTime(f.min)}</span></p></a>`;
 }
 function getToday(){
@@ -294,21 +314,22 @@ function renderResults(){
   document.getElementById("count").innerHTML=n?`${num(n)} ${plural(n,...forms)} <span>${q?"по запросу":"на этот вечер"}</span>`:(q?"Ничего не нашлось":"Пока ничего");
   document.getElementById("pick").hidden=n<2;
   const r=document.getElementById("results");
-  if(more)more.disconnect();
   if(!FILMS.length){r.innerHTML=`<div class="empty"><h2>База фильмов не загрузилась</h2><p>Файл data/films.js не найден. Соберите его скриптом scripts/build_films.py.</p></div>`;return}
   if(!n){r.innerHTML=q?`<div class="empty"><h2>Такого нет в базе</h2><p>В базе фильмы и сериалы, у которых на IMDb больше 10 тысяч оценок. Попробуйте другое название — на русском или в оригинале.</p></div>`
     :`<div class="empty"><h2>Под такой вечер ничего нет</h2><p>Попробуйте дать себе чуть больше времени, выбрать другое настроение или смотреть что угодно.</p><button class="btn ghost" data-time="999">Показать на весь вечер</button></div>`;return}
-  r.innerHTML=`<div class="grid" id="grid"></div><div class="loadmore" id="loadmore"><button class="btn ghost" id="moreBtn">Показать ещё</button></div>`;
-  showMore();
+  r.innerHTML=`<div class="grid" id="grid"></div><div class="loadmore" id="loadmore"><button class="btn ghost" id="moreBtn"></button><small id="left"></small></div>`;
+  showMore(FIRST);
 }
-function showMore(){
+// новые карточки добавляются только по кнопке — без бесконечной ленты
+function showMore(count){
   const g=document.getElementById("grid");if(!g||shown>=list.length)return;
-  const next=list.slice(shown,shown+PAGE);
+  const next=list.slice(shown,shown+count);
   g.insertAdjacentHTML("beforeend",next.map((f,i)=>card(f,shown+i)).join(""));
   shown+=next.length;
-  const lm=document.getElementById("loadmore");
-  if(shown>=list.length){lm.remove();if(more)more.disconnect()}
-  else if(more){more.disconnect();more.observe(lm)}
+  const left=list.length-shown;
+  if(!left){document.getElementById("loadmore").remove();return}
+  document.getElementById("moreBtn").textContent="Показать ещё "+Math.min(PAGE,left);
+  document.getElementById("left").textContent="осталось "+num(left);
 }
 
 function renderFilm(id){
@@ -373,7 +394,7 @@ app.addEventListener("click",e=>{
   if(el.dataset.kind){if(state.kind!==el.dataset.kind)changed="kind";state.kind=el.dataset.kind;state.q="";save();renderCatalog();observe();return}
   if(el.dataset.focus){const g=document.querySelector(`[aria-labelledby="${el.dataset.focus}"]`);
     (g.querySelector('[aria-pressed="true"]')||g.querySelector("button")).focus();return}
-  if(el.id==="moreBtn"){showMore();return}
+  if(el.id==="moreBtn"){showMore(PAGE);return}
   if(el.id==="pick"){roulette();return}
   if(el.id==="choose"){
     const id=location.hash.slice(6), today=getToday();
@@ -402,11 +423,16 @@ function roulette(){
     i++;setTimeout(step,60+Math.pow(i/steps,3)*260);
   })();
 }
+function contact(){
+  if(!CONTACT)return;
+  const a=document.createElement("a");a.href="mailto:"+CONTACT;a.textContent=CONTACT;
+  document.getElementById("contact").replaceChildren(a);
+}
 function tick(){const d=new Date();document.getElementById("now").textContent="Сейчас "+pad(d.getHours())+":"+pad(d.getMinutes())}
 if(FILMS.some(f=>f.p))document.getElementById("tmdb").hidden=false;
 if(FILMS.some(f=>f.w&&!f.p))document.getElementById("wm").hidden=false;
 window.addEventListener("hashchange",route);
-tick();setInterval(tick,30000);
+contact();tick();setInterval(tick,30000);
 route();
 </script>
 </body>
