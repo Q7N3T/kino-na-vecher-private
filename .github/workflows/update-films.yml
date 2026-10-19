@@ -1,0 +1,59 @@
+# Пересобирает data/films.js: база IMDb + постеры, описания и популярность из TMDB.
+# Запускается раз в неделю и вручную (Actions → «Обновить базу фильмов» → Run workflow).
+# Нужен секрет репозитория TMDB_API_KEY (API Read Access Token или API Key с themoviedb.org).
+name: Обновить базу фильмов
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"  # по понедельникам в 03:17 UTC
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-films
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ответы TMDB кешируются между запусками, чтобы не спрашивать заново про всю базу
+      - uses: actions/cache@v4
+        with:
+          path: data/tmdb-cache.json
+          key: tmdb-cache-${{ github.run_id }}
+          restore-keys: tmdb-cache-
+
+      - name: Собрать базу из IMDb
+        run: python3 scripts/build_films.py
+
+      - name: Добавить постеры, описания и популярность из TMDB
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          if [ -z "$TMDB_API_KEY" ]; then
+            echo "::error::Секрет TMDB_API_KEY не задан: Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          python3 scripts/build_films.py --tmdb
+
+      - name: Закоммитить обновлённую базу
+        run: |
+          if git diff --quiet data/films.js; then
+            echo "База не изменилась"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data/films.js
+          git commit -m "Обновить базу фильмов ($(date -u +%Y-%m-%d))"
+          git push

@@ -187,8 +187,11 @@ def tmdb(films):
                 m = res[0] if res else {}
                 return tid, {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview"), "pop": m.get("popularity")}
             except urllib.error.HTTPError as e:
-                if e.code == 429: time.sleep(2 ** attempt); continue
+                if e.code == 401: sys.exit("TMDB отклонил ключ (401): проверьте TMDB_API_KEY")
+                if e.code in (429, 500, 502, 503, 504): time.sleep(2 ** attempt); continue
                 raise
+            except (urllib.error.URLError, OSError):
+                time.sleep(2 ** attempt)
         return tid, None
 
     todo = [t for t in films if t not in cache]
@@ -204,7 +207,8 @@ def tmdb(films):
     for tid, f in films.items():
         m = cache.get(tid) or {}
         if m.get("p"): f["p"] = m["p"]
-        if m.get("t"): f["t"] = m["t"]
+        # без русского перевода TMDB отдаёт оригинальное название — тогда оставляем русское из IMDb
+        if m.get("t") and (re.search("[а-яё]", m["t"], re.I) or not re.search("[а-яё]", f["t"], re.I)): f["t"] = m["t"]
         if m.get("ov"): f["syn"] = m["ov"]
         if m.get("pop"): f["pop"] = round(m["pop"], 1)  # популярность TMDB — порядок как на их сайте
 
