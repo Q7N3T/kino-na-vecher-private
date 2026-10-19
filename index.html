@@ -113,6 +113,8 @@ footer a{color:inherit}
 .clock{border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:0 0 32px;display:flex;gap:16px;align-items:center}
 .clock b{font-family:var(--display);font-weight:500;font-size:28px;color:var(--accent);line-height:1;animation:glowText 2.8s ease-in-out infinite}
 .clock span{color:var(--muted);font-size:15px;line-height:1.4}
+.syn[aria-busy]{min-height:4.6em;background:linear-gradient(90deg,var(--surface) 0,var(--line) 50%,var(--surface) 100%) 0 0/200% 100%;border-radius:8px;animation:shimmer 1.2s linear infinite;opacity:.5}
+@keyframes shimmer{to{background-position:-200% 0}}
 .syn{max-width:62ch;margin:0 0 28px;color:#D9CFC6}
 .tags{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 32px}
 .tag{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;color:var(--muted);transition:border-color .2s,color .2s}
@@ -196,7 +198,7 @@ footer.site{display:flex;justify-content:space-between;gap:24px 48px;flex-wrap:w
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="data/films.js"></script>
+<script src="data/films.js?v=202610191203"></script>
 <script>
 const FILMS = window.FILMS || [];
 const BY_ID = new Map(FILMS.map(f=>[f.id,f]));
@@ -208,6 +210,14 @@ const YEAR=new Date().getFullYear(), TMDB_POP=FILMS.some(f=>f.pop);
 for(const f of FILMS){const last=f.ye||(f.k?YEAR:f.y);f.pp=TMDB_POP?f.pop||0:f.v/Math.pow(Math.max(0,YEAR-last)+1,1.3)}
 const SORTS={pop:(a,b)=>b.pp-a.pp, rating:(a,b)=>b.s-a.s, new:(a,b)=>b.y-a.y||b.pp-a.pp};
 // постеры TMDB идут через прокси wsrv.nl: image.tmdb.org открывается не везде, а wsrv ещё и сжимает в WebP
+const DATA_VER = "202610191203";  // проставляет scripts/build_films.py при каждой сборке
+const synParts=new Map();
+// описание лежит в одном из 64 файлов data/syn/NN.json; грузим его только на странице фильма
+function loadSyn(f){
+  const n=String(+f.id.slice(2)%64).padStart(2,"0");
+  if(!synParts.has(n))synParts.set(n,fetch(`data/syn/${n}.json?v=${DATA_VER}`).then(r=>r.ok?r.json():{}).catch(()=>({})));
+  return synParts.get(n).then(p=>p[f.id]||"");
+}
 const tmdbImg=(p,w)=>"https://wsrv.nl/?url="+encodeURIComponent("https://image.tmdb.org/t/p/w500"+p)+"&w="+w+"&output=webp";
 const FIRST = 10, PAGE = 20;  // сколько карточек сразу и сколько добавляет «Показать ещё»
 const CONTACT = "";  // почта для сотрудничества, например "hello@example.ru"
@@ -369,7 +379,7 @@ function renderFilm(id){
         <div><dt>IMDb</dt><dd>${f.imdb.toFixed(1)} <span class="votes">· ${num(f.v)} ${plural(f.v,"оценка","оценки","оценок")}</span></dd></div>
       </dl>
       <div class="clock"><b>${endTime(f.min)}</b><span>${f.k?`закончится первая серия, если начать прямо сейчас${episodesTonight(f)>1?`. За ${TIMES.find(x=>x.v===state.time).per} успеете ${episodesTonight(f)} ${plural(episodesTonight(f),"серию","серии","серий")}`:""}`:"закончится, если начать прямо сейчас"}</span></div>
-      ${f.syn?`<p class="syn">${esc(f.syn)}</p>`:""}
+      ${f.hs?`<p class="syn" id="syn" aria-busy="true"></p>`:""}
       <div class="tags">${f.k?`<span class="tag kind">${kindName(f)}</span>`:""}${f.m.map(m=>`<span class="tag">${MOODS.find(x=>x.v===m).tag}</span>`).join("")}${f.genres.map(g=>`<span class="tag">${esc(cap(g))}</span>`).join("")}</div>
       <div class="actions">
         <button class="btn" id="choose" aria-pressed="${chosen}">${chosen?"Выбрано на сегодня":"Смотрю сегодня"}</button>
@@ -381,6 +391,8 @@ function renderFilm(id){
   </article>
   ${similar.length?`<section class="more reveal"><h2>Похожее</h2><div class="grid">${similar.map((f,i)=>card(f,i)).join("")}</div></section>`:""}`;
   app.querySelectorAll(".info>*").forEach((el,i)=>el.style.setProperty("--i",i));
+  if(f.hs)loadSyn(f).then(t=>{const el=document.getElementById("syn");if(!el||location.hash!=="#film/"+f.id)return;
+    if(t){el.textContent=t;el.removeAttribute("aria-busy")}else el.remove()});
   window.scrollTo(0,0);
 }
 

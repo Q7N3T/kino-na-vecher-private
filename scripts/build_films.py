@@ -269,29 +269,57 @@ def wikidata(films):
     print(f"  с лицензией: {sum('w' in f for f in films.values()):,}", file=sys.stderr)
 
 
+SYN = os.path.join(ROOT, "data", "syn")
+SYN_PARTS = 64  # описания лежат отдельно и грузятся только на странице фильма
+INDEX = os.path.join(ROOT, "index.html")
+
+
+def syn_part(tid):
+    return int(tid[2:]) % SYN_PARTS
+
+
 def write(films):
-    out = []
+    out, parts = [], [{} for _ in range(SYN_PARTS)]
     for f in sorted(films.values(), key=lambda f: (-f["v"])):
         f["m"] = moods(f["g"])
         f["genres"] = [GENRES_RU.get(x, x.lower()) for x in f.pop("g")]
         if f["o"] == f["t"]: f.pop("o")
+        f.pop("hs", None)
+        if f.get("syn"):
+            parts[syn_part(f["id"])][f["id"]] = f["syn"]
+            f["hs"] = 1
+        f.pop("syn", None)
         out.append(f)
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    os.makedirs(SYN, exist_ok=True)
+    for n, part in enumerate(parts):
+        with open(os.path.join(SYN, f"{n:02d}.json"), "w", encoding="utf-8") as fh:
+            json.dump(part, fh, ensure_ascii=False, separators=(",", ":"))
     with open(OUT, "w", encoding="utf-8") as fh:
         fh.write("// Сгенерировано scripts/build_films.py. Information courtesy of IMDb (https://www.imdb.com). Used with permission.\n")
         fh.write("window.FILMS=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
-    print(f"Готово: {len(out):,} фильмов, {os.path.getsize(OUT)/1e6:.1f} МБ → {OUT}", file=sys.stderr)
+    # новая версия в адресе, чтобы браузеры не показывали старую базу из кеша
+    ver = time.strftime("%Y%m%d%H%M", time.gmtime())
+    html = open(INDEX, encoding="utf-8").read()
+    html = re.sub(r'data/films\.js(\?v=\w+)?"', f'data/films.js?v={ver}"', html, count=1)
+    html = re.sub(r'const DATA_VER = "\w*"', f'const DATA_VER = "{ver}"', html, count=1)
+    open(INDEX, "w", encoding="utf-8").write(html)
+    print(f"Готово: {len(out):,} фильмов, {os.path.getsize(OUT)/1e6:.1f} МБ, описаний {sum(map(len, parts)):,} → {OUT}", file=sys.stderr)
 
 
 def load_existing():
     s = open(OUT, encoding="utf-8").read()
     arr = json.loads(s[s.index("["):s.rindex("]") + 1])
     rev = {v: k for k, v in GENRES_RU.items()}
+    syn = {}
+    for n in range(SYN_PARTS):
+        path = os.path.join(SYN, f"{n:02d}.json")
+        if os.path.exists(path): syn.update(json.load(open(path, encoding="utf-8")))
     films = {}
     for f in arr:
         f["g"] = [rev.get(x, x) for x in f.pop("genres")]
         f.pop("m", None)
         f.setdefault("o", f["t"])
+        if f.pop("hs", None) and f["id"] in syn: f["syn"] = syn[f["id"]]
         films[f["id"]] = f
     return films
 
