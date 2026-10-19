@@ -25,9 +25,9 @@ const DECADES = [['', 'Все годы'], ['2020', '2020-е'], ['2010', '2010-е
         </div>
       </div>
       <div class="f-row">
-        <div class="chips" role="group" aria-label="Настроение">
-          <button type="button" class="chip" data-mood="any" aria-pressed="true">Любое настроение</button>
+        <div class="chips moods" role="group" aria-label="Настроение">
           {MOODS.map((m) => <button type="button" class="chip" data-mood={m.v} aria-pressed="false">{cap(m.word)}</button>)}
+          <button type="button" class="chip" data-mood="any" aria-pressed="true">Любое настроение</button>
         </div>
       </div>
       <div class="f-row selects">

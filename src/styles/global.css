@@ -158,6 +158,12 @@ a.tag:hover { color: var(--text); border-color: var(--dim); }
   /* ряды фильтров лежат в CSS-сетке: без min-width: 0 строка кнопок растягивает колонку и всю страницу */
   .pickers > *, .filters > *, .chips.scroll { min-width: 0; }
   .chip { height: 40px; padding: 0 16px; font-size: 14px; }
+  /* настроения — ровной сеткой по две в ряд, чтобы строки не рвались по-разному на разных телефонах */
+  .chips.moods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chips.moods .chip { padding: 0 10px; }
+  .chips.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .chips.three .chip { padding: 0 8px; }
+  .m-hide { display: none; }
 
   .sec { padding-top: 36px; padding-bottom: 36px; }
   .sec-h { margin-bottom: 16px; }
