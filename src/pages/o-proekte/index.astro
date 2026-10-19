@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import { load } from '../../lib/data.js';
+import { num } from '../../lib/format.js';
+const { films, actors } = load();
+const s = films.filter((f) => f.k).length;
+---
+<Base title="О проекте" description="Как устроен сервис «Кино на вечер» и откуда данные.">
+  <div class="wrap prose">
+    <header class="page-h"><h1>О проекте</h1></header>
+    <p>«Кино на вечер» помогает выбрать, что посмотреть сегодня. Вечером обычно известны две вещи: сколько есть времени и какое настроение. С них и начинается подбор, а на каждой карточке видно, во сколько закончится фильм или серия, если начать прямо сейчас.</p>
+    <h2>Что в базе</h2>
+    <p>{num(films.length - s)} фильмов и {num(s)} сериалов, у которых на IMDb больше 10 тысяч оценок, и {num(actors.length)} актёров. База обновляется каждую неделю.</p>
+    <h2>Откуда данные</h2>
+    <p>Названия, годы, длительность, жанры, рейтинги, сезоны и серии — из открытых датасетов IMDb. Information courtesy of IMDb (<a href="https://www.imdb.com">https://www.imdb.com</a>). Used with permission.</p>
+    <p>Постеры, описания, фото актёров, популярность и статусы сериалов — из <a href="https://www.themoviedb.org">TMDB</a>. This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+    <p>Настроения («посмеяться», «понервничать», «погрустить», «подумать», «вдохновиться») выводятся из жанров автоматически.</p>
+  </div>
+</Base>
+<style>
+  .prose { max-width: 760px; padding-bottom: 40px; }
+  .prose p { font-size: 17px; line-height: 1.65; color: var(--text-2); }
+  .prose h2 { font-size: 22px; margin: 36px 0 10px; }
+</style>

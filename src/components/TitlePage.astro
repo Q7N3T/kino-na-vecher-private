@@ -1,0 +1,173 @@
+---
+import Base from '../layouts/Base.astro';
+import { similar } from '../lib/data.js';
+import { cardHTML, MOODS, status, years, kindName, dur, plural, num, votes, tmdbImg, hue, initials, cap } from '../lib/format.js';
+
+const { f } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const st = status(f);
+const sim = similar(f, 6);
+const total = f.k && f.ep ? f.ep * f.min : 0;
+const section = f.k ? 'serialy/' : 'filmy/';
+const desc = f.syn ? f.syn.slice(0, 180).replace(/\s+\S*$/, '') + '…' : `${kindName(f)} ${years(f)}. Рейтинг IMDb ${f.imdb.toFixed(1)}.`;
+const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${f.o || f.t} ${f.y} трейлер`);
+const moodTags = f.m.map((m) => MOODS.find((x) => x.v === m)?.tag).filter(Boolean);
+const jsonld = {
+  '@context': 'https://schema.org', '@type': f.k ? 'TVSeries' : 'Movie', name: f.t, alternateName: f.o, datePublished: String(f.y),
+  genre: f.genres, description: f.syn || undefined, image: f.p ? `https://image.tmdb.org/t/p/w500${f.p}` : undefined,
+  aggregateRating: { '@type': 'AggregateRating', ratingValue: f.imdb, ratingCount: f.v, bestRating: 10, worstRating: 1 },
+  actor: f.crew.slice(0, 6).map((c) => ({ '@type': 'Person', name: c.n })),
+};
+---
+<Base title={`${f.t} (${years(f)})`} description={desc} section={section} image={f.p ? tmdbImg(f.p, 500) : undefined}>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonld)} />
+  <section class="hero-t" style={`--h:${hue(f.id)}`}>
+    <div class="wrap">
+      <nav class="crumbs" aria-label="Навигация"><a href={base}>Главная</a> / <a href={base + section}>{f.k ? 'Сериалы' : 'Фильмы'}</a> / <span>{f.t}</span></nav>
+      <div class="t-row">
+        <div class="poster t-poster">
+          {f.p && <img src={tmdbImg(f.p, 500)} alt={`Постер: «${f.t}»`} onerror="this.remove()" />}
+          <span class="ph">{f.t}</span>
+        </div>
+        <div class="t-info">
+          <div class="chips">
+            {st && <span class={`pill ${st.on ? 'on' : st.on === false ? 'off' : ''}`}><i></i>{st.label}{st.more && !st.on ? ' ' + st.more : ''}</span>}
+            <span class="tag">{kindName(f)}</span>
+            {f.genres.map((g) => <span class="tag">{cap(g)}</span>)}
+          </div>
+          <div>
+            <h1>{f.t}</h1>
+            <p class="t-orig">{[f.o, years(f)].filter(Boolean).join(' · ')}</p>
+          </div>
+          <dl class="stats">
+            <div><dt>IMDb</dt><dd>{f.imdb.toFixed(1)}</dd><span>{votes(f.v)} {plural(f.v, 'оценка', 'оценки', 'оценок')}</span></div>
+            {f.k ? <>
+              <div><dt>Сезонов</dt><dd>{f.ss || '—'}</dd><span>{f.ep ? `${num(f.ep)} ${plural(f.ep, 'серия', 'серии', 'серий')}` : ''}{f.ann ? ` · ещё ${f.ann} в планах` : ''}</span></div>
+              <div><dt>Серия</dt><dd>{dur(f.min)}</dd><span>в среднем</span></div>
+              {total ? <div><dt>Весь сериал</dt><dd>{Math.round(total / 60)} ч</dd><span>≈ {Math.ceil(total / 90)} {plural(Math.ceil(total / 90), 'вечер', 'вечера', 'вечеров')} по 1,5 ч</span></div> : null}
+            </> : <>
+              <div><dt>Длительность</dt><dd>{dur(f.min)}</dd><span>{f.y}</span></div>
+              {f.d?.length ? <div class="wide"><dt>{f.d.length > 1 ? 'Режиссёры' : 'Режиссёр'}</dt><dd class="small">{f.d.join(', ')}</dd></div> : null}
+            </>}
+          </dl>
+          <div class="clock">
+            <b data-end={f.min}></b>
+            <span>{f.k ? 'закончится первая серия, если начать прямо сейчас' : 'закончится, если начать прямо сейчас'}{st?.on && st.more ? ` · ${st.more}` : ''}</span>
+          </div>
+          <div class="acts">
+            <button class="btn" id="tonight" data-id={f.id}>Смотрю сегодня</button>
+            <button class="btn ghost" id="watch" data-id={f.id} aria-pressed="false">
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg><span>Хочу посмотреть</span></button>
+            <a class="btn ghost" href={yt} rel="noopener" target="_blank"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"></path></svg>Трейлер</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap t-body">
+    <div class="t-main">
+      {f.syn && <section><h2>{f.k ? 'О сериале' : 'О фильме'}</h2><p class="syn">{f.syn}</p></section>}
+      {f.crew.length > 0 && (
+        <section>
+          <h2>В ролях</h2>
+          <ul class="cast">
+            {f.crew.map((c) => {
+              const inner = <>
+                <span class="face" style={`--h:${hue(c.n)}`}>{c.p && <img src={tmdbImg(c.p, 160, 'w185')} alt="" loading="lazy" onerror="this.remove()" />}<b>{initials(c.n)}</b></span>
+                <span class="who"><span>{c.n}</span>{c.r && <small>{c.r}</small>}</span>
+              </>;
+              return <li>{c.slug ? <a href={`${base}akter/${c.slug}/`}>{inner}</a> : <div>{inner}</div>}</li>;
+            })}
+          </ul>
+        </section>
+      )}
+      {f.k && f.sx.length > 0 && (
+        <section>
+          <h2>Сезоны</h2>
+          <ol class="seasons">
+            {f.sx.map(([n, eps, y1, y2]) => <li><span>Сезон {n}</span><small>{[y1 && (y2 && y2 !== y1 ? `${y1}–${y2}` : y1), `${eps} ${plural(eps, 'серия', 'серии', 'серий')}`].filter(Boolean).join(' · ')}</small></li>)}
+            {f.ann ? <li class="soon"><span>{f.ann > 1 ? `Сезоны ${f.ss + 1}–${f.ss + f.ann}` : `Сезон ${f.ss + 1}`}</span><small>анонсированы</small></li> : null}
+          </ol>
+        </section>
+      )}
+    </div>
+    <aside class="t-side">
+      {moodTags.length > 0 && <div class="box"><h2>Настроение</h2><div class="chips">{moodTags.map((t) => <span class="pill">{t}</span>)}</div></div>}
+      <div class="box links">
+        <h2>Где узнать больше</h2>
+        <a href={`https://www.imdb.com/title/${f.id}/`} rel="noopener" target="_blank">Страница на IMDb ↗</a>
+        <a href={`https://www.themoviedb.org/redirect?external_source=imdb_id&external_id=${f.id}`} rel="noopener" target="_blank">Страница на TMDB ↗</a>
+      </div>
+    </aside>
+  </div>
+
+  {sim.length > 0 && (
+    <section class="sec wrap" aria-labelledby="h-sim">
+      <div class="sec-h"><h2 id="h-sim">Похожее</h2></div>
+      <div class="grid" set:html={sim.map((x, i) => cardHTML(x, base, i)).join('')}></div>
+    </section>
+  )}
+</Base>
+
+<style>
+  .hero-t { background: radial-gradient(120% 90% at 85% 0%, hsl(var(--h) 35% 16%), transparent 60%), linear-gradient(180deg, #121620, var(--bg)); border-bottom: 1px solid #1C202A; }
+  .hero-t .wrap { padding-top: 28px; padding-bottom: 56px; }
+  .t-row { display: flex; flex-wrap: wrap; gap: 40px 48px; align-items: flex-start; }
+  .t-poster { flex: 0 1 320px; min-width: 220px; margin: 0; border-radius: 16px; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .9); animation: rise .7s cubic-bezier(.2, .8, .2, 1) both; }
+  .t-poster .ph { font-size: 22px; padding: 22px; }
+  .t-info { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+  .t-info > * { animation: rise .6s cubic-bezier(.2, .8, .2, 1) both; }
+  .t-info > :nth-child(2) { animation-delay: .05s; } .t-info > :nth-child(3) { animation-delay: .1s; } .t-info > :nth-child(4) { animation-delay: .15s; } .t-info > :nth-child(5) { animation-delay: .2s; }
+  h1 { margin: 0; font-size: clamp(36px, 5.4vw, 64px); font-weight: 700; line-height: 1.05; letter-spacing: -.025em; }
+  .t-orig { margin: 8px 0 0; font-size: 19px; color: var(--dim); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; max-width: 720px; }
+  .stats div { background: #131720; padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; }
+  .stats .wide { grid-column: span 2; }
+  .stats dt { font-size: 13px; color: var(--dim); }
+  .stats dd { margin: 0; font-size: 24px; font-weight: 600; }
+  .stats dd.small { font-size: 17px; line-height: 1.35; padding-top: 4px; }
+  .stats span { font-size: 12px; color: var(--dim); }
+  .clock { display: flex; align-items: center; gap: 18px; padding: 18px 22px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); max-width: 720px; }
+  .clock b { font-size: 32px; font-weight: 600; color: var(--accent); line-height: 1; }
+  .clock span { font-size: 15px; color: var(--muted); line-height: 1.4; }
+  .acts { display: flex; flex-wrap: wrap; gap: 12px; }
+  .t-body { display: flex; flex-wrap: wrap; gap: 48px; padding-top: 48px; padding-bottom: 16px; }
+  .t-main { flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 44px; }
+  .t-main h2, .box h2 { margin: 0 0 16px; font-size: 22px; font-weight: 600; }
+  .syn { margin: 0; font-size: 17px; line-height: 1.65; color: var(--text-2); max-width: 68ch; }
+  .cast { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 24px 20px; }
+  .cast a, .cast div { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; text-decoration: none; color: var(--text); }
+  .cast a:hover .who > span { color: var(--accent); }
+  .face { width: 104px; height: 104px; border-radius: 50%; position: relative; overflow: hidden; display: grid; place-items: center; background: linear-gradient(150deg, hsl(var(--h) 35% 30%), hsl(calc(var(--h) + 40) 30% 15%)); transition: transform .3s; }
+  .cast a:hover .face { transform: scale(1.05); }
+  .face b { font-size: 24px; font-weight: 600; color: hsl(var(--h) 40% 86%); }
+  .face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .who { display: flex; flex-direction: column; gap: 2px; font-weight: 500; font-size: 15px; line-height: 1.3; }
+  .who small { font-size: 13px; color: var(--dim); font-weight: 400; }
+  .seasons { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .seasons li { display: flex; justify-content: space-between; gap: 16px; padding: 15px 20px; background: #12151D; border-top: 1px solid #1C202A; font-weight: 500; }
+  .seasons li:first-child { border-top: 0; }
+  .seasons small { font-size: 14px; color: var(--dim); font-weight: 400; }
+  .seasons .soon span { color: var(--dim); }
+  .t-side { flex: 1 1 300px; display: flex; flex-direction: column; gap: 16px; }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+  .box h2 { font-size: 17px; margin-bottom: 14px; }
+  .links { display: flex; flex-direction: column; gap: 10px; }
+  .links a { text-decoration: none; }
+  @media (max-width: 760px) { .t-poster { flex-basis: 220px; max-width: 240px; } .stats .wide { grid-column: auto; } .face { width: 84px; height: 84px; } }
+</style>
+
+<script>
+  import { watchlist, toggleWatch } from '../lib/client.js';
+  const w = document.getElementById('watch')!;
+  const id = w.dataset.id!;
+  const paint = (on: boolean) => { w.setAttribute('aria-pressed', String(on)); w.querySelector('span')!.textContent = on ? 'В списке' : 'Хочу посмотреть'; };
+  paint(watchlist().includes(id));
+  w.addEventListener('click', () => paint(toggleWatch(id)));
+  const t = document.getElementById('tonight')!;
+  t.addEventListener('click', () => {
+    try { localStorage.setItem('knv-today', JSON.stringify({ id, date: new Date().toDateString() })); } catch {}
+    t.textContent = 'Хорошего вечера!';
+  });
+</script>

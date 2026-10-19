@@ -1,0 +1,12 @@
+---
+import Base from '../layouts/Base.astro';
+const base = import.meta.env.BASE_URL;
+---
+<Base title="Страница не найдена">
+  <div class="wrap" style="padding: 96px var(--gut) 64px; max-width: 640px">
+    <p class="eyebrow">Ошибка 404</p>
+    <h1 style="margin: 0 0 14px; font-size: 44px">Такой страницы нет</h1>
+    <p style="color: var(--muted); font-size: 17px">Возможно, фильм пропал из базы или адрес набран с ошибкой. Попробуйте поиск или вернитесь к подбору.</p>
+    <a class="btn" href={base} style="margin-top: 16px">На главную</a>
+  </div>
+</Base>

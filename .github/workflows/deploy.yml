@@ -1,0 +1,56 @@
+# Собирает сайт на Astro и выкладывает на GitHub Pages.
+# Запускается при пуше в main и после еженедельного обновления базы
+# (коммит бота сам по себе другие workflow не запускает).
+# В настройках репозитория: Settings → Pages → Source: GitHub Actions.
+name: Выложить сайт
+
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: ["Обновить базу фильмов"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main  # после обновления базы — уже с новым коммитом бота
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Собрать сайт
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

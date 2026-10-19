@@ -1,0 +1,52 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Поиск" description="Поиск фильмов, сериалов и актёров.">
+  <div class="wrap">
+    <header class="page-h"><h1>Поиск</h1></header>
+    <form class="search big" role="search" id="f">
+      <label class="sr" for="q">Что ищем</label>
+      <input id="q" name="q" type="search" placeholder="Название, актёр или режиссёр" autocomplete="off" autofocus>
+    </form>
+    <p class="hint" id="hint" aria-live="polite"></p>
+    <section id="people-s" hidden><h2 class="h">Актёры</h2><ul class="people" id="people"></ul></section>
+    <section id="titles-s" hidden><h2 class="h">Фильмы и сериалы</h2><div class="grid" id="grid"></div><div class="load"><button class="btn ghost" id="more" hidden>Показать ещё</button><small id="left"></small></div></section>
+  </div>
+</Base>
+<style>
+  .big { width: 100%; max-width: 760px; height: 56px; margin-top: 24px; }
+  .big input { font-size: 18px; }
+  .hint { color: var(--dim); margin: 14px 0 28px; }
+  .h { font-size: 20px; font-weight: 600; margin: 8px 0 18px; }
+  .people { list-style: none; margin: 0 0 40px; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; }
+  .people a { display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: var(--text); }
+  .people a:hover { border-color: var(--accent); }
+  .people img, .people b { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--surface-2); font-size: 14px; }
+</style>
+<script>
+  import { loadIndex, norm, translit, pager, base, SORTS } from '../../lib/client.js';
+  import { tmdbImg, esc, initials, plural } from '../../lib/format.js';
+  const input = document.getElementById('q') as HTMLInputElement;
+  let actors: [string, string, string][] | null = null;
+  async function run() {
+    const raw = input.value.trim();
+    const q = norm(raw), ql = translit(q);
+    history.replaceState(null, '', location.pathname + (raw ? '?q=' + encodeURIComponent(raw) : ''));
+    const hint = document.getElementById('hint')!;
+    if (q.length < 2) { hint.textContent = 'Введите хотя бы две буквы.'; document.getElementById('titles-s')!.hidden = document.getElementById('people-s')!.hidden = true; return; }
+    const [all, ppl] = await Promise.all([loadIndex(), actors || fetch(`${base}aktery.json`).then((r) => r.json()).then((a) => (actors = a))]);
+    const has = (s: string) => { s = norm(s); return s.includes(q) || s.includes(ql); };
+    const list = all.filter((f: any) => norm(f.t).includes(q) || has(f.o) || (f.d || []).some(has)).sort(SORTS.pop);
+    const people = ppl.filter(([n]) => has(n)).slice(0, 12);
+    hint.textContent = list.length || people.length ? `Нашлось: ${list.length} ${plural(list.length, 'тайтл', 'тайтла', 'тайтлов')}, ${people.length} ${plural(people.length, 'актёр', 'актёра', 'актёров')}` : 'Ничего не нашлось. В базе фильмы и сериалы, у которых на IMDb больше 10 тысяч оценок.';
+    document.getElementById('people-s')!.hidden = !people.length;
+    document.getElementById('people')!.innerHTML = people.map(([n, slug, p]) => `<li><a href="${base}akter/${slug}/">${p ? `<img src="${tmdbImg(p, 80, 'w185')}" alt="" loading="lazy">` : `<b>${esc(initials(n))}</b>`}${esc(n)}</a></li>`).join('');
+    document.getElementById('titles-s')!.hidden = !list.length;
+    if (list.length) pager(document.getElementById('grid')!, document.getElementById('more')!, document.getElementById('left'), list);
+  }
+  input.value = new URLSearchParams(location.search).get('q') || '';
+  let t: number;
+  input.addEventListener('input', () => { clearTimeout(t); t = window.setTimeout(run, 180); });
+  document.getElementById('f')!.addEventListener('submit', (e) => { e.preventDefault(); run(); });
+  run();
+</script>

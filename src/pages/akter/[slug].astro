@@ -1,0 +1,50 @@
+---
+import Base from '../../layouts/Base.astro';
+import { load } from '../../lib/data.js';
+import { cardHTML, tmdbImg, hue, initials, plural, esc } from '../../lib/format.js';
+
+export function getStaticPaths() {
+  return load().actors.map((a) => ({ params: { slug: a.slug }, props: { a } }));
+}
+const { a } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const roles = [...a.roles].sort((x, y) => y.f.pp - x.f.pp);
+const films = roles.filter((r) => !r.f.k), series = roles.filter((r) => r.f.k);
+const best = [...roles].sort((x, y) => y.f.s - x.f.s)[0];
+const yrs = roles.map((r) => r.f.y);
+---
+<Base title={a.n} section="aktery/" image={a.p ? tmdbImg(a.p, 500, 'w500') : undefined}
+  description={`${a.n}: ${roles.length} ${plural(roles.length, 'роль', 'роли', 'ролей')} в фильмах и сериалах. ${best ? 'Лучший по рейтингу — «' + best.f.t + '».' : ''}`}>
+  <section class="a-hero" style={`--h:${hue(a.n)}`}>
+    <div class="wrap">
+      <nav class="crumbs" aria-label="Навигация"><a href={base}>Главная</a> / <a href={`${base}aktery/`}>Актёры</a></nav>
+      <div class="a-row">
+        <span class="face">{a.p && <img src={tmdbImg(a.p, 400, 'w500')} alt={a.n} onerror="this.remove()" />}<b>{initials(a.n)}</b></span>
+        <div>
+          <h1>{a.n}</h1>
+          <p>{films.length ? `${films.length} ${plural(films.length, 'фильм', 'фильма', 'фильмов')}` : ''}{films.length && series.length ? ' и ' : ''}{series.length ? `${series.length} ${plural(series.length, 'сериал', 'сериала', 'сериалов')}` : ''} в базе · {Math.min(...yrs)}–{Math.max(...yrs)}</p>
+          {best && <p class="best">Лучший по рейтингу: <a href={`${base}${best.f.k ? 'serial' : 'film'}/${best.f.slug}/`}>{best.f.t}</a>{best.r ? `, роль — ${best.r}` : ''}</p>}
+        </div>
+      </div>
+    </div>
+  </section>
+  {[['Фильмы', films], ['Сериалы', series]].map(([h, l]: any) => l.length > 0 && (
+    <section class="sec wrap">
+      <div class="sec-h"><h2>{h}</h2></div>
+      <div class="grid" set:html={l.map((r: any, i: number) => cardHTML(r.f, base, i % 18).replace('<span class="card-m">', `<span class="card-r">${esc(r.r)}</span><span class="card-m">`)).join('')}></div>
+    </section>
+  ))}
+</Base>
+<style>
+  .a-hero { background: radial-gradient(100% 90% at 80% 0%, hsl(var(--h) 30% 15%), transparent 60%), linear-gradient(180deg, #121620, var(--bg)); border-bottom: 1px solid #1C202A; }
+  .a-hero .wrap { padding-top: 28px; padding-bottom: 48px; }
+  .a-row { display: flex; flex-wrap: wrap; gap: 32px; align-items: center; }
+  .face { width: 200px; height: 200px; border-radius: 50%; position: relative; overflow: hidden; display: grid; place-items: center; flex-shrink: 0; background: linear-gradient(150deg, hsl(var(--h) 35% 30%), hsl(calc(var(--h) + 40) 30% 15%)); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .9); animation: rise .6s ease both; }
+  .face b { font-size: 48px; font-weight: 600; color: hsl(var(--h) 40% 86%); }
+  .face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); font-weight: 700; line-height: 1.08; }
+  p { margin: 10px 0 0; color: var(--muted); font-size: 17px; }
+  .best a { text-decoration: none; }
+  :global(.card-r) { font-size: 13px; color: var(--accent); }
+  @media (max-width: 760px) { .face { width: 140px; height: 140px; } }
+</style>

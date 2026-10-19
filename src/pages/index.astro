@@ -1,0 +1,166 @@
+---
+import Base from '../layouts/Base.astro';
+import { load, COLLECTIONS, collection } from '../lib/data.js';
+import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur } from '../lib/format.js';
+
+const base = import.meta.env.BASE_URL;
+const { films } = load();
+const DEF = { time: 105, mood: 'laugh', kind: 'any' };
+const tonight = films.filter((f) => f.min <= DEF.time && f.m.includes(DEF.mood)).slice(0, 12);
+const popular = {
+  all: films.slice(0, 12),
+  movie: films.filter((f) => !f.k).slice(0, 12),
+  series: films.filter((f) => f.k).slice(0, 12),
+};
+const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 100000).length }));
+---
+<Base section="">
+  <section class="wrap hero">
+    <div class="hero-main">
+      <p class="eyebrow">Сейчас <span data-now></span> · подберём под ваш вечер</p>
+      <h1 class="sentence">Сегодня у меня <button class="slot" data-focus="g-time" id="s-time">{TIMES[0].word}</button>, хочется <button class="slot" data-focus="g-mood" id="s-mood">{MOODS[0].word}</button>. Смотрим <button class="slot" data-focus="g-kind" id="s-kind">{KINDS[0].word}</button></h1>
+      <div class="pickers">
+        <div><p class="picker-l" id="l-time">Сколько есть времени</p>
+          <div class="chips" role="group" aria-labelledby="l-time" id="g-time">{TIMES.map((t) => <button class="chip" data-time={t.v} aria-pressed={String(t.v === DEF.time)}>{t.chip}</button>)}</div></div>
+        <div><p class="picker-l" id="l-mood">Какое настроение</p>
+          <div class="chips" role="group" aria-labelledby="l-mood" id="g-mood">{[...MOODS, { v: 'any', word: 'неважно' }].map((m) => <button class="chip" data-mood={m.v} aria-pressed={String(m.v === DEF.mood)}>{cap(m.word)}</button>)}</div></div>
+        <div><p class="picker-l" id="l-kind">Что смотрим</p>
+          <div class="chips" role="group" aria-labelledby="l-kind" id="g-kind">{KINDS.map((k) => <button class="chip" data-kind={k.v} aria-pressed={String(k.v === DEF.kind)}>{k.chip}</button>)}</div></div>
+      </div>
+    </div>
+    <a class="pick" id="pick-card" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
+      <span class="pick-p poster" style={`--h:${hue(tonight[0].id)}`} id="pick-poster" set:html={tonight[0].p ? `<img src="${tmdbImg(tonight[0].p, 200)}" alt="" onerror="this.remove()">` : ''}></span>
+      <span class="pick-b">
+        <small>Выбор на сегодня</small>
+        <b id="pick-t">{tonight[0].t}</b>
+        <span id="pick-m">{tonight[0].k ? `${kindName(tonight[0])} · ${seasons(tonight[0])} · серия ${dur(tonight[0].min)}` : `${tonight[0].y} · ${dur(tonight[0].min)}`}</span>
+        <span class="pick-e" id="pick-e">Финал в <span data-end={tonight[0].min}></span></span>
+      </span>
+    </a>
+  </section>
+
+  <section class="sec wrap" aria-labelledby="h-tonight">
+    <div class="sec-h">
+      <h2 id="h-tonight">Подходит на сегодня <small id="tonight-n"></small></h2>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="lucky">Выбрать за меня</button>
+        <a class="more-link" id="tonight-all" href={`${base}filmy/`}>Все →</a>
+      </div>
+    </div>
+    <div class="grid" id="tonight" set:html={tonight.map((f, i) => cardHTML(f, base, i)).join('')}></div>
+  </section>
+
+  <section class="sec band" aria-labelledby="h-colls">
+    <div class="wrap">
+      <div class="sec-h"><h2 id="h-colls">Подборки</h2><a class="more-link" href={`${base}podborki/`}>Все подборки →</a></div>
+      <div class="colls">
+        {colls.map((c) => (
+          <a class="coll" href={`${base}podborki/${c.slug}/`} style={`--h:${c.hue}`}>
+            <small>{c.n.toLocaleString('ru-RU')}</small><b>{c.title}</b><span>{c.sub}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="sec wrap" aria-labelledby="h-pop">
+    <div class="sec-h">
+      <h2 id="h-pop">Популярное сейчас</h2>
+      <div class="chips" role="group" aria-label="Тип" id="pop-tabs">
+        <button class="chip" data-tab="all" aria-pressed="true">Всё</button>
+        <button class="chip" data-tab="movie" aria-pressed="false">Фильмы</button>
+        <button class="chip" data-tab="series" aria-pressed="false">Сериалы</button>
+      </div>
+    </div>
+    {Object.entries(popular).map(([k, l]) => <div class="grid" data-pop={k} hidden={k !== 'all'} set:html={l.map((f, i) => cardHTML(f, base, i)).join('')}></div>)}
+  </section>
+</Base>
+
+<style>
+  .hero { display: flex; flex-wrap: wrap; gap: 40px 48px; align-items: flex-end; padding-top: 64px; padding-bottom: 24px; }
+  .hero-main { flex: 999 1 640px; min-width: 0; }
+  .sentence { margin: 0; font-weight: 600; font-size: clamp(34px, 5.2vw, 60px); line-height: 1.14; letter-spacing: -.02em; max-width: 19ch; }
+  .slot { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; border-bottom: 3px solid var(--accent); cursor: pointer; line-height: 1.05; display: inline-block; transition: color .2s; }
+  .slot:hover { color: var(--accent-hi); }
+  .slot.pop { animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
+  .pickers { display: grid; gap: 16px; margin-top: 32px; }
+  .picker-l { margin: 0 0 8px; font-size: 14px; color: var(--dim); }
+  .pick { flex: 1 1 320px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 22px; display: flex; gap: 18px; align-items: center; text-decoration: none; color: var(--text); transition: border-color .2s, transform .3s; }
+  .pick:hover { color: var(--text); border-color: var(--line-2); transform: translateY(-3px); }
+  .pick-p { width: 96px; flex-shrink: 0; margin: 0; }
+  .pick-b { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .pick-b small { font-size: 13px; color: var(--dim); }
+  .pick-b b { font-size: 20px; font-weight: 600; line-height: 1.25; }
+  .pick-b > span { font-size: 14px; color: var(--muted); }
+  .pick-b .pick-e { color: var(--accent); }
+  @keyframes pop { 0% { transform: scale(.85); opacity: .3; } 100% { transform: none; opacity: 1; } }
+  @media (max-width: 760px) { .hero { padding-top: 36px; } }
+</style>
+
+<script>
+  import { loadIndex, matches, base } from '../lib/client.js';
+  import { cardHTML, MOODS, TIMES, KINDS, plural, dur, kindName, seasons, tmdbImg } from '../lib/format.js';
+
+  const state = { time: 105, mood: 'laugh', kind: 'any' };
+  try { Object.assign(state, JSON.parse(sessionStorage.getItem('knv-pick') || '{}')); } catch {}
+  let list = [];
+  const $ = (id) => document.getElementById(id)!;
+
+  function label() {
+    $('s-time').textContent = TIMES.find((t) => t.v === state.time)!.word;
+    $('s-mood').textContent = state.mood === 'any' ? 'чего угодно' : MOODS.find((m) => m.v === state.mood)!.word;
+    $('s-kind').textContent = KINDS.find((k) => k.v === state.kind)!.word;
+    document.querySelectorAll<HTMLButtonElement>('[data-time]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.time! === state.time)));
+    document.querySelectorAll<HTMLButtonElement>('[data-mood]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mood === state.mood)));
+    document.querySelectorAll<HTMLButtonElement>('[data-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === state.kind)));
+  }
+
+  async function update() {
+    const all = await loadIndex();
+    list = all.filter((f) => matches(f, state));
+    const forms = KINDS.find((k) => k.v === state.kind)!.forms;
+    $('tonight-n').textContent = list.length ? list.length.toLocaleString('ru-RU') + ' ' + plural(list.length, ...forms) : '';
+    $('tonight').innerHTML = list.length
+      ? list.slice(0, 12).map((f, i) => cardHTML(f, base, i)).join('')
+      : '<div class="empty"><h2>Под такой вечер ничего нет</h2><p>Дайте себе чуть больше времени или выберите другое настроение.</p></div>';
+    const q = new URLSearchParams({ time: String(state.time), mood: state.mood });
+    $('tonight-all').setAttribute('href', `${base}${state.kind === 'series' ? 'serialy' : 'filmy'}/?${q}`);
+    const f = list[0];
+    if (f) {
+      ($('pick-card') as HTMLAnchorElement).href = `${base}${f.k ? 'serial' : 'film'}/${f.slug}/`;
+      $('pick-t').textContent = f.t;
+      $('pick-m').textContent = f.k ? `${kindName(f)} · ${seasons(f)} · серия ${dur(f.min)}` : `${f.y} · ${dur(f.min)}`;
+      $('pick-e').innerHTML = `Финал в <span data-end="${f.min}"></span>`;
+      $('pick-poster').innerHTML = f.p ? `<img src="${tmdbImg(f.p, 200)}" alt="" onerror="this.remove()">` : '';
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('button');
+    if (!b) return;
+    const d = b.dataset;
+    let changed = '';
+    if (d.time) { state.time = +d.time; changed = 's-time'; }
+    else if (d.mood) { state.mood = d.mood; changed = 's-mood'; }
+    else if (d.kind) { state.kind = d.kind; changed = 's-kind'; }
+    else if (d.focus) { ($(d.focus).querySelector('[aria-pressed="true"]') as HTMLElement)?.focus(); return; }
+    else if (d.tab) {
+      document.querySelectorAll<HTMLElement>('[data-pop]').forEach((g) => (g.hidden = g.dataset.pop !== d.tab));
+      document.querySelectorAll<HTMLElement>('[data-tab]').forEach((t) => t.setAttribute('aria-pressed', String(t === b)));
+      return;
+    } else if (b.id === 'lucky') {
+      // случайный из лучших в подборке, а не из всех полутора тысяч
+      const pool = list.slice(0, Math.max(24, Math.ceil(list.length * 0.05)));
+      const f = pool[Math.floor(Math.random() * pool.length)];
+      if (f) location.href = `${base}${f.k ? 'serial' : 'film'}/${f.slug}/`;
+      return;
+    } else return;
+    try { sessionStorage.setItem('knv-pick', JSON.stringify(state)); } catch {}
+    label();
+    const s = $(changed); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop');
+    update();
+  });
+
+  label();
+  update();
+</script>

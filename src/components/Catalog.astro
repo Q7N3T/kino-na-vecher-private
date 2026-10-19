@@ -1,0 +1,106 @@
+---
+import Base from '../layouts/Base.astro';
+import { load } from '../lib/data.js';
+import { cardHTML, MOODS, cap, num, plural } from '../lib/format.js';
+
+const { kind } = Astro.props; // 'movie' | 'series'
+const base = import.meta.env.BASE_URL;
+const list = load().films.filter((f) => (kind === 'series') === !!f.k);
+const genres = [...new Set(list.flatMap((f) => f.genres))].sort((a, b) => a.localeCompare(b, 'ru'));
+const first = list.slice(0, 18);
+const isS = kind === 'series';
+const DECADES = [['', 'Все годы'], ['2020', '2020-е'], ['2010', '2010-е'], ['2000', '2000-е'], ['1990', '1990-е'], ['1980', '1980-е'], ['1970', 'До 1980']];
+---
+<Base title={isS ? 'Сериалы' : 'Фильмы'} section={isS ? 'serialy/' : 'filmy/'}
+  description={isS ? `${num(list.length)} сериалов с рейтингами IMDb, статусом и числом сезонов. Подберите сериал под настроение и свободное время.` : `${num(list.length)} фильмов с рейтингами IMDb. Подберите фильм под настроение и свободное время.`}>
+  <div class="wrap">
+    <header class="page-h">
+      <h1>{isS ? 'Сериалы' : 'Фильмы'}</h1>
+      <p>{num(list.length)} {isS ? plural(list.length, 'сериал', 'сериала', 'сериалов') : plural(list.length, 'фильм', 'фильма', 'фильмов')} с рейтингом IMDb от 10 тысяч оценок. {isS ? 'Время считаем по одной серии.' : ''}</p>
+    </header>
+    <form class="filters" id="filters" data-kind={kind}>
+      <div class="f-row">
+        <div class="chips" role="group" aria-label="Время">
+          {[999, 105, 130].map((v) => <button type="button" class="chip" data-time={v} aria-pressed={String(v === 999)}>{v === 999 ? 'Любая длина' : (isS ? 'Серия до ' : 'До ') + (v === 105 ? '1,5 часа' : '2 часов')}</button>)}
+        </div>
+      </div>
+      <div class="f-row">
+        <div class="chips" role="group" aria-label="Настроение">
+          <button type="button" class="chip" data-mood="any" aria-pressed="true">Любое настроение</button>
+          {MOODS.map((m) => <button type="button" class="chip" data-mood={m.v} aria-pressed="false">{cap(m.word)}</button>)}
+        </div>
+      </div>
+      <div class="f-row selects">
+        <label><span class="sr">Жанр</span><select id="genre"><option value="">Все жанры</option>{genres.map((g) => <option value={g}>{cap(g)}</option>)}</select></label>
+        <label><span class="sr">Годы</span><select id="decade">{DECADES.map(([v, l]) => <option value={v}>{l}</option>)}</select></label>
+        {isS && <label><span class="sr">Статус</span><select id="state"><option value="">Любой статус</option><option value="on">Продолжаются</option><option value="off">Завершены</option></select></label>}
+        <label><span class="sr">Сортировка</span><select id="sort"><option value="pop">Популярное</option><option value="rating">Высокий рейтинг</option><option value="new">Новинки</option></select></label>
+        <span class="count" id="count" aria-live="polite"></span>
+      </div>
+    </form>
+    <div class="grid" id="grid" set:html={first.map((f, i) => cardHTML(f, base, i)).join('')}></div>
+    <div class="load"><button class="btn ghost" id="more" hidden>Показать ещё</button><small id="left"></small></div>
+  </div>
+</Base>
+
+<style>
+  .filters { display: grid; gap: 12px; padding: 24px 0 32px; }
+  .selects { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  select { height: 44px; padding: 0 38px 0 16px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); font-size: 15px; cursor: pointer; appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--dim) 50%), linear-gradient(-45deg, transparent 50%, var(--dim) 50%);
+    background-position: calc(100% - 20px) 52%, calc(100% - 15px) 52%; background-size: 5px 5px; background-repeat: no-repeat; }
+  select:hover { border-color: var(--dim); }
+  .count { color: var(--dim); font-size: 15px; margin-left: 6px; }
+</style>
+
+<script>
+  import { loadIndex, matches, pager, SORTS } from '../lib/client.js';
+  import { status, plural } from '../lib/format.js';
+
+  const form = document.getElementById('filters')!;
+  const kind = form.dataset.kind!;
+  const isS = kind === 'series';
+  const p = new URLSearchParams(location.search);
+  const st = { time: +(p.get('time') || 999), mood: p.get('mood') || 'any', genre: p.get('genre') || '', decade: p.get('decade') || '', state: p.get('state') || '', sort: p.get('sort') || 'pop' };
+  const sel = (id: string) => document.getElementById(id) as HTMLSelectElement | null;
+
+  function paint() {
+    form.querySelectorAll<HTMLElement>('[data-time]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.time! === st.time)));
+    form.querySelectorAll<HTMLElement>('[data-mood]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mood === st.mood)));
+    sel('genre')!.value = st.genre; sel('decade')!.value = st.decade; sel('sort')!.value = st.sort; if (sel('state')) sel('state')!.value = st.state;
+  }
+
+  async function run(push = true) {
+    const all = await loadIndex();
+    const d = +st.decade;
+    const from = !st.decade ? 0 : d === 1970 ? 0 : d, to = !st.decade ? 9999 : d === 1970 ? 1979 : d + 9;
+    const list = all.filter((f) => matches(f, { time: st.time, mood: st.mood, kind, genre: st.genre, from, to })
+      && (!st.state || (status(f)?.on === (st.state === 'on')))).sort(SORTS[st.sort as keyof typeof SORTS]);
+    const n = list.length;
+    document.getElementById('count')!.textContent = n.toLocaleString('ru-RU') + ' ' + (isS ? plural(n, 'сериал', 'сериала', 'сериалов') : plural(n, 'фильм', 'фильма', 'фильмов'));
+    const grid = document.getElementById('grid')!;
+    if (!n) { grid.innerHTML = '<div class="empty"><h2>Ничего не нашлось</h2><p>Попробуйте убрать часть фильтров.</p></div>'; document.getElementById('more')!.hidden = true; document.getElementById('left')!.textContent = ''; }
+    else pager(grid, document.getElementById('more')!, document.getElementById('left'), list);
+    if (push) {
+      const q = new URLSearchParams();
+      if (st.time !== 999) q.set('time', String(st.time));
+      for (const k of ['mood', 'genre', 'decade', 'state', 'sort'] as const) if (st[k] && st[k] !== 'any' && !(k === 'sort' && st[k] === 'pop')) q.set(k, st[k]);
+      history.replaceState(null, '', location.pathname + (q.size ? '?' + q : ''));
+    }
+  }
+
+  form.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('button');
+    if (!b) return;
+    if (b.dataset.time) st.time = +b.dataset.time;
+    else if (b.dataset.mood) st.mood = b.dataset.mood;
+    else return;
+    paint(); run();
+  });
+  form.addEventListener('change', () => {
+    st.genre = sel('genre')!.value; st.decade = sel('decade')!.value; st.sort = sel('sort')!.value; st.state = sel('state')?.value || '';
+    run();
+  });
+  paint();
+  run(false);
+</script>

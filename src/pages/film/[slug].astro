@@ -1,0 +1,10 @@
+---
+import TitlePage from '../../components/TitlePage.astro';
+import { load } from '../../lib/data.js';
+
+export function getStaticPaths() {
+  return load().films.filter((f) => !f.k).map((f) => ({ params: { slug: f.slug }, props: { f } }));
+}
+const { f } = Astro.props;
+---
+<TitlePage f={f} />

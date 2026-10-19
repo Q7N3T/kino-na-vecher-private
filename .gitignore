@@ -1,3 +1,6 @@
 data/tmdb-cache.json
 __pycache__/
 data/.imdb/
+node_modules/
+dist/
+.astro/

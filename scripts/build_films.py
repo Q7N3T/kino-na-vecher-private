@@ -124,10 +124,14 @@ def build_imdb(min_votes):
         if r[0] not in eps: continue
         parent, season = eps[r[0]]
         y = int(r[5]) if nn(r[5]) else None
-        a = aired.setdefault(parent, {"ep": 0, "ss": set(), "lens": [], "last": 0, "future": set()})
+        a = aired.setdefault(parent, {"ep": 0, "ss": set(), "lens": [], "last": 0, "future": set(), "by": {}})
         if r[0] in rated or (y and y < year_now):
             a["ep"] += 1
-            if season: a["ss"].add(season)
+            if season:
+                a["ss"].add(season)
+                b = a["by"].setdefault(season, [0, None, None])  # серий, первый и последний год
+                b[0] += 1
+                if y: b[1] = min(b[1] or y, y); b[2] = max(b[2] or y, y)
             if nn(r[7]): a["lens"].append(int(r[7]))
             if y: a["last"] = max(a["last"], y)
         elif season:
@@ -137,6 +141,7 @@ def build_imdb(min_votes):
         if a["ep"]: f["ep"] = a["ep"]
         if a["ss"]: f["ss"] = len(a["ss"])
         if a["last"]: f["la"] = a["last"]  # год последней вышедшей серии
+        if a["by"]: f["sx"] = [[n, *a["by"][n]] for n in sorted(a["by"])]  # по сезонам — для страницы сериала
         ann = {s for s in a["future"] if s > max(a["ss"], default=0)}
         if ann: f["ann"] = len(ann)  # анонсированные, но ещё не вышедшие сезоны
         # длительность серии в карточке сериала у IMDb бывает общей (у «Медведя» 1611 мин) —
@@ -340,7 +345,7 @@ def write(films):
         f["genres"] = [GENRES_RU.get(x, x.lower()) for x in f.pop("g")]
         if f["o"] == f["t"]: f.pop("o")
         f.pop("hs", None)
-        extra = {k: v for k, v in (("s", f.pop("syn", None)), ("c", f.pop("cr", None))) if v}
+        extra = {k: v for k, v in (("s", f.pop("syn", None)), ("c", f.pop("cr", None)), ("x", f.pop("sx", None))) if v}
         if extra:
             parts[syn_part(f["id"])][f["id"]] = extra
             f["hs"] = 1
@@ -354,6 +359,8 @@ def write(films):
         fh.write("window.FILMS=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
     # новая версия в адресе, чтобы браузеры не показывали старую базу из кеша
     ver = time.strftime("%Y%m%d%H%M", time.gmtime())
+    if not os.path.exists(INDEX):  # старый одностраничный сайт; новый на Astro собирается из data/ сам
+        return print(f"Готово: {len(out):,} фильмов, {os.path.getsize(OUT)/1e6:.1f} МБ, описаний {sum(map(len, parts)):,} → {OUT}", file=sys.stderr)
     html = open(INDEX, encoding="utf-8").read()
     html = re.sub(r'data/films\.js(\?v=\w+)?"', f'data/films.js?v={ver}"', html, count=1)
     html = re.sub(r'const DATA_VER = "\w*"', f'const DATA_VER = "{ver}"', html, count=1)
@@ -378,6 +385,7 @@ def load_existing():
         if isinstance(x, str): x = {"s": x}  # старый формат: только описание
         if x and x.get("s"): f["syn"] = x["s"]
         if x and x.get("c"): f["cr"] = x["c"]
+        if x and x.get("x"): f["sx"] = x["x"]
         films[f["id"]] = f
     return films
 

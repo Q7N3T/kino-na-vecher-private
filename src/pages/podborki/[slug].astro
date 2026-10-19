@@ -1,0 +1,21 @@
+---
+import Base from '../../layouts/Base.astro';
+import { COLLECTIONS, collection } from '../../lib/data.js';
+import { cardHTML } from '../../lib/format.js';
+
+export function getStaticPaths() {
+  return COLLECTIONS.map((c) => ({ params: { slug: c.slug }, props: { c } }));
+}
+const { c } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const list = collection(c, 120);
+---
+<Base title={c.title} section="podborki/" description={`${c.title}: ${c.sub.toLowerCase()}. ${list.length} лучших по рейтингу IMDb.`}>
+  <div class="wrap">
+    <header class="page-h">
+      <nav class="crumbs" aria-label="Навигация"><a href={base}>Главная</a> / <a href={`${base}podborki/`}>Подборки</a></nav>
+      <h1>{c.title}</h1><p>{c.sub}. Лучшие по рейтингу IMDb.</p>
+    </header>
+    <div class="grid" style="padding-top: 32px" set:html={list.map((f, i) => cardHTML(f, base, i % 18)).join('')}></div>
+  </div>
+</Base>
