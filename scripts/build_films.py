@@ -20,6 +20,7 @@ DL = os.path.join(ROOT, "data", ".imdb")
 UA = {"User-Agent": "kino-na-vecher/1.0 (https://github.com/Q7N3T/kino-na-vecher-private)"}
 
 KINDS = {"movie": None, "tvSeries": "s", "tvMiniSeries": "ms"}  # None — фильм
+SKIP_GENRES = {"Talk-Show", "News"}
 
 GENRES_RU = {
     "Action": "боевик", "Adventure": "приключения", "Animation": "мультфильм", "Biography": "биография",
@@ -98,6 +99,8 @@ def build_imdb(min_votes):
         if ttype == "movie" and nn(runtime) is None:
             continue
         g = nn(genres).split(",") if nn(genres) else []
+        if SKIP_GENRES & set(g):  # ток-шоу и новости выходят каждый день — не «кино на вечер»
+            continue
         f = {"id": tid, "t": primary, "o": orig, "y": int(year), "g": g, "imdb": rating[tid][0], "v": rating[tid][1]}
         if nn(runtime): f["min"] = int(runtime)
         if KINDS[ttype]:
@@ -106,24 +109,40 @@ def build_imdb(min_votes):
         films[tid] = f
 
     print("Серии…", file=sys.stderr)
-    seasons, eps = {}, {}
+    eps = {}
     for r in rows("title.episode"):
         eid, parent, season, _ = r
         if parent in films:
-            films[parent]["ep"] = films[parent].get("ep", 0) + 1
-            if nn(season): seasons.setdefault(parent, set()).add(season)
-            if "min" not in films[parent]: eps[eid] = parent
-    for tid, ss in seasons.items():
-        films[tid]["ss"] = len(ss)
-    if eps:
-        # у части сериалов длительность не указана — берём медиану по их сериям
-        print("Длительность серий…", file=sys.stderr)
-        lens = {}
-        for r in rows("title.basics"):
-            if r[0] in eps and nn(r[7]):
-                lens.setdefault(eps[r[0]], []).append(int(r[7]))
-        for tid, l in lens.items():
-            films[tid]["min"] = sorted(l)[len(l) // 2]
+            eps[eid] = (parent, int(season) if nn(season) and season.isdigit() else None)
+    # IMDb заранее заводит серии анонсированных сезонов — без даты и без оценок.
+    # Вышедшей считаем серию, у которой есть оценки или год выхода раньше текущего.
+    rated = {r[0] for r in rows("title.ratings") if r[0] in eps}
+    year_now = time.gmtime().tm_year
+    print("Даты и длительность серий…", file=sys.stderr)
+    aired = {}
+    for r in rows("title.basics"):
+        if r[0] not in eps: continue
+        parent, season = eps[r[0]]
+        y = int(r[5]) if nn(r[5]) else None
+        a = aired.setdefault(parent, {"ep": 0, "ss": set(), "lens": [], "last": 0, "future": set()})
+        if r[0] in rated or (y and y < year_now):
+            a["ep"] += 1
+            if season: a["ss"].add(season)
+            if nn(r[7]): a["lens"].append(int(r[7]))
+            if y: a["last"] = max(a["last"], y)
+        elif season:
+            a["future"].add(season)
+    for tid, a in aired.items():
+        f = films[tid]
+        if a["ep"]: f["ep"] = a["ep"]
+        if a["ss"]: f["ss"] = len(a["ss"])
+        if a["last"]: f["la"] = a["last"]  # год последней вышедшей серии
+        ann = {s for s in a["future"] if s > max(a["ss"], default=0)}
+        if ann: f["ann"] = len(ann)  # анонсированные, но ещё не вышедшие сезоны
+        # длительность серии в карточке сериала у IMDb бывает общей (у «Медведя» 1611 мин) —
+        # надёжнее медиана по вышедшим сериям
+        if len(a["lens"]) >= 3 or (a["lens"] and "min" not in f):
+            l = sorted(a["lens"]); f["min"] = l[len(l) // 2]
     for tid in [t for t, f in films.items() if "min" not in f]:
         del films[tid]
 
@@ -175,6 +194,19 @@ def tmdb(films):
         cache = json.load(open(CACHE, encoding="utf-8"))
     auth = {"Authorization": "Bearer " + key} if len(key) > 40 else {}
 
+    def api(url, q):
+        if not auth: q = {**q, "api_key": key}
+        for attempt in range(4):
+            try:
+                with urllib.request.urlopen(urllib.request.Request(url + "?" + urllib.parse.urlencode(q), headers=auth), timeout=30) as r:
+                    return json.load(r)
+            except urllib.error.HTTPError as e:
+                if e.code in (429, 500, 502, 503, 504): time.sleep(2 ** attempt); continue
+                return None
+            except (urllib.error.URLError, OSError):
+                time.sleep(2 ** attempt)
+        return None
+
     def get(tid):
         q = {"external_source": "imdb_id", "language": "ru-RU"}
         if not auth: q["api_key"] = key
@@ -185,7 +217,22 @@ def tmdb(films):
                     j = json.load(r)
                 res = j.get("movie_results") or j.get("tv_results") or []
                 m = res[0] if res else {}
-                return tid, {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview"), "pop": m.get("popularity")}
+                v = {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview"), "pop": m.get("popularity")}
+                if m.get("id"):
+                    tv = bool(j.get("tv_results")) and not j.get("movie_results")
+                    # подробности одним запросом: состав с фото, а у сериала ещё статус
+                    det = api(f"https://api.themoviedb.org/3/{'tv' if tv else 'movie'}/{m['id']}",
+                              {"language": "ru-RU", "append_to_response": "aggregate_credits" if tv else "credits"})
+                    if det:
+                        if tv:
+                            v["ts"] = det.get("status")
+                            nxt = det.get("next_episode_to_air") or {}
+                            if nxt.get("air_date"): v["nx"] = nxt["air_date"]
+                        cast = (det.get("aggregate_credits") if tv else det.get("credits") or {}) or {}
+                        v["cr"] = [[c.get("name"), (c.get("roles") or [{}])[0].get("character") if tv else c.get("character"), c.get("profile_path")]
+                                   for c in (cast.get("cast") or [])[:CAST]]
+                    v["cv"] = CAST_VER
+                return tid, v
             except urllib.error.HTTPError as e:
                 if e.code == 401: sys.exit("TMDB отклонил ключ (401): проверьте TMDB_API_KEY")
                 if e.code in (429, 500, 502, 503, 504): time.sleep(2 ** attempt); continue
@@ -194,11 +241,15 @@ def tmdb(films):
                 time.sleep(2 ** attempt)
         return tid, None
 
-    todo = [t for t in films if t not in cache]
+    # сериалы, закешированные до появления статуса, спрашиваем заново; статус меняется — раз в неделю обновляем
+    todo = [t for t in films if t not in cache or cache[t].get("cv") != CAST_VER
+            or (films[t].get("k") and not cache[t].get("tsd") == time.strftime("%Y-%W"))]
     print(f"TMDB: {len(todo):,} запросов (в кеше {len(cache):,})", file=sys.stderr)
     with cf.ThreadPoolExecutor(8) as ex:
         for i, (tid, v) in enumerate(ex.map(get, todo), 1):
-            if v is not None: cache[tid] = v
+            if v is not None:
+                if films[tid].get("k"): v["tsd"] = time.strftime("%Y-%W")
+                cache[tid] = v
             if i % 500 == 0:
                 print(f"  {i:,}/{len(todo):,}", file=sys.stderr)
                 json.dump(cache, open(CACHE, "w", encoding="utf-8"), ensure_ascii=False)
@@ -211,6 +262,9 @@ def tmdb(films):
         if m.get("t") and (re.search("[а-яё]", m["t"], re.I) or not re.search("[а-яё]", f["t"], re.I)): f["t"] = m["t"]
         if m.get("ov"): f["syn"] = m["ov"]
         if m.get("pop"): f["pop"] = round(m["pop"], 1)  # популярность TMDB — порядок как на их сайте
+        for k in ("ts", "nx", "cr"):
+            f.pop(k, None)
+            if m.get(k): f[k] = m[k]
 
 
 def http_json(url, data=None):
@@ -270,7 +324,8 @@ def wikidata(films):
 
 
 SYN = os.path.join(ROOT, "data", "syn")
-SYN_PARTS = 64  # описания лежат отдельно и грузятся только на странице фильма
+SYN_PARTS = 64  # описания и состав с фото лежат отдельно и грузятся только на странице фильма
+CAST, CAST_VER = 10, 1  # сколько актёров брать из TMDB; версия — чтобы перезапросить кеш при изменениях
 INDEX = os.path.join(ROOT, "index.html")
 
 
@@ -285,10 +340,10 @@ def write(films):
         f["genres"] = [GENRES_RU.get(x, x.lower()) for x in f.pop("g")]
         if f["o"] == f["t"]: f.pop("o")
         f.pop("hs", None)
-        if f.get("syn"):
-            parts[syn_part(f["id"])][f["id"]] = f["syn"]
+        extra = {k: v for k, v in (("s", f.pop("syn", None)), ("c", f.pop("cr", None))) if v}
+        if extra:
+            parts[syn_part(f["id"])][f["id"]] = extra
             f["hs"] = 1
-        f.pop("syn", None)
         out.append(f)
     os.makedirs(SYN, exist_ok=True)
     for n, part in enumerate(parts):
@@ -319,7 +374,10 @@ def load_existing():
         f["g"] = [rev.get(x, x) for x in f.pop("genres")]
         f.pop("m", None)
         f.setdefault("o", f["t"])
-        if f.pop("hs", None) and f["id"] in syn: f["syn"] = syn[f["id"]]
+        x = syn.get(f["id"]) if f.pop("hs", None) else None
+        if isinstance(x, str): x = {"s": x}  # старый формат: только описание
+        if x and x.get("s"): f["syn"] = x["s"]
+        if x and x.get("c"): f["cr"] = x["c"]
         films[f["id"]] = f
     return films
 

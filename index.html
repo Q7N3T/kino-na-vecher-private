@@ -66,11 +66,19 @@ header.top{display:flex;justify-content:space-between;align-items:center;padding
 .card:hover .poster{transform:translateY(-6px) scale(1.02);box-shadow:0 18px 36px -12px rgba(0,0,0,.7),0 0 0 1px rgba(233,185,73,.35)}
 .card h3{transition:color .2s}
 .card:hover h3{color:var(--accent)}
+.badge{transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.card:hover .badge,.card.spin .badge{transform:translateY(-6px)}
 .card.spin .poster{box-shadow:0 0 0 3px var(--accent),0 0 28px rgba(233,185,73,.5);transform:translateY(-6px)}
 .card.won .poster{animation:won .6s ease}
 .card h3{font-size:16px;font-weight:500;margin:12px 0 2px;line-height:1.3}
 .card p{margin:0;color:var(--muted);font-size:14px}
 .card .end{color:var(--text)}
+.pw{position:relative}
+.badge{position:absolute;left:8px;top:8px;z-index:1;font-size:12px;line-height:1;padding:6px 9px;border-radius:999px;background:rgba(23,18,26,.82);backdrop-filter:blur(6px);color:var(--text);display:inline-flex;align-items:center;gap:6px;pointer-events:none}
+.pill{display:inline-flex;align-items:center;gap:7px}
+.badge i,.pill i{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.badge.on i,.pill.on i{background:#6FD08C;box-shadow:0 0 8px #6FD08C}
+.badge.off i,.pill.off i{background:var(--muted)}
 .poster{aspect-ratio:2/3;width:100%;object-fit:cover;border-radius:6px;background:var(--surface)}
 .poster.big{border-radius:10px;box-shadow:0 30px 60px -24px rgba(0,0,0,.8)}
 /* заглушка, пока у фильма нет постера */
@@ -123,8 +131,13 @@ footer a{color:inherit}
 .actions{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 40px}
 .block{margin:0 0 32px;max-width:62ch}
 .block h2{font-size:15px;font-weight:500;color:var(--muted);margin:0 0 10px}
-.cast{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 24px}
-.cast li span{display:block;color:var(--muted);font-size:14px}
+.cast{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px 24px}
+.cast li{display:flex;align-items:center;gap:12px;line-height:1.35;animation:fade .4s ease both}
+.cast small{display:block;color:var(--muted);font-size:14px}
+.face{width:52px;height:52px;border-radius:50%;flex-shrink:0;position:relative;overflow:hidden;display:grid;place-items:center;
+  background:linear-gradient(150deg,hsl(var(--h) 35% 30%),hsl(calc(var(--h) + 40) 30% 16%))}
+.face b{font-family:var(--display);font-weight:500;font-size:15px;color:hsl(var(--h) 40% 85%)}
+.face img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .more{border-top:1px solid var(--line);padding:32px 0 80px}
 .more h2{font-family:var(--display);font-weight:500;font-size:22px;margin:0 0 20px}
 
@@ -198,7 +211,7 @@ footer.site{display:flex;justify-content:space-between;gap:24px 48px;flex-wrap:w
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="data/films.js?v=202610191203"></script>
+<script src="data/films.js?v=202610191227"></script>
 <script>
 const FILMS = window.FILMS || [];
 const BY_ID = new Map(FILMS.map(f=>[f.id,f]));
@@ -210,15 +223,21 @@ const YEAR=new Date().getFullYear(), TMDB_POP=FILMS.some(f=>f.pop);
 for(const f of FILMS){const last=f.ye||(f.k?YEAR:f.y);f.pp=TMDB_POP?f.pop||0:f.v/Math.pow(Math.max(0,YEAR-last)+1,1.3)}
 const SORTS={pop:(a,b)=>b.pp-a.pp, rating:(a,b)=>b.s-a.s, new:(a,b)=>b.y-a.y||b.pp-a.pp};
 // постеры TMDB идут через прокси wsrv.nl: image.tmdb.org открывается не везде, а wsrv ещё и сжимает в WebP
-const DATA_VER = "202610191203";  // проставляет scripts/build_films.py при каждой сборке
+const DATA_VER = "202610191227";  // проставляет scripts/build_films.py при каждой сборке
 const synParts=new Map();
 // описание лежит в одном из 64 файлов data/syn/NN.json; грузим его только на странице фильма
 function loadSyn(f){
   const n=String(+f.id.slice(2)%64).padStart(2,"0");
   if(!synParts.has(n))synParts.set(n,fetch(`data/syn/${n}.json?v=${DATA_VER}`).then(r=>r.ok?r.json():{}).catch(()=>({})));
-  return synParts.get(n).then(p=>p[f.id]||"");
+  // {s: описание, c: [[имя, роль, фото], …]}; в старом формате там была просто строка
+  return synParts.get(n).then(p=>{const x=p[f.id];return typeof x==="string"?{s:x}:x||{}});
 }
-const tmdbImg=(p,w)=>"https://wsrv.nl/?url="+encodeURIComponent("https://image.tmdb.org/t/p/w500"+p)+"&w="+w+"&output=webp";
+const tmdbImg=(p,w,size="w500")=>"https://wsrv.nl/?url="+encodeURIComponent("https://image.tmdb.org/t/p/"+size+p)+"&w="+w+"&output=webp";
+function initials(n){return n.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase()}
+// состав: из TMDB — с фото и ролями, пока не загрузился — имена из IMDb
+function castList(people){
+  return `<ul class="cast">${people.map(([n,r,ph])=>`<li><span class="face" style="--h:${hue(n)}">${ph?`<img src="${tmdbImg(ph,120,"w185")}" alt="" loading="lazy" onerror="this.remove()">`:""}<b>${esc(initials(n))}</b></span><div>${esc(n)}${r?`<small>${esc(r)}</small>`:""}</div></li>`).join("")}</ul>`;
+}
 const FIRST = 10, PAGE = 20;  // сколько карточек сразу и сколько добавляет «Показать ещё»
 const CONTACT = "";  // почта для сотрудничества, например "hello@example.ru"
 const TIMES = [
@@ -259,8 +278,23 @@ function norm(s){return String(s||"").toLowerCase().replace(/ё/g,"е")}
 const TR={а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ж:"zh",з:"z",и:"i",й:"y",к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",х:"h",ц:"ts",ч:"ch",ш:"sh",щ:"sch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya"};
 function translit(s){return [...s].map(c=>c in TR?TR[c]:c).join("")}
 function fits(f){return f.min<=state.time&&(state.mood==="any"||f.m.includes(state.mood))&&(state.kind==="any"||(state.kind==="series")===!!f.k)}
-function years(f){return !f.k||f.ye===f.y?String(f.y):f.ye?f.y+"–"+f.ye:"с "+f.y}
+// у продлённых сериалов IMDb иногда ставит год окончания — тогда показываем «с …»
+function years(f){return !f.k||f.ye===f.y&&!f.ann?String(f.y):f.ye&&!f.ann?f.y+"–"+f.ye:"с "+f.y}
 function kindName(f){return f.k==="ms"?"Мини-сериал":f.k?"Сериал":"Фильм"}
+// Статус сериала: TMDB знает точно, без него судим по IMDb — год окончания, анонсы, дата последней серии.
+// on: true — выходит, false — завершён, null — неизвестно (давно нет новых серий).
+function status(f){
+  if(!f.k)return null;
+  const ts=f.ts, nx=f.nx&&new Date(f.nx)>new Date()?f.nx:null;
+  if(ts==="Ended")return {on:false,label:f.k==="ms"?"Вышел целиком":"Завершён",more:f.ye?`в ${f.ye}`:""};
+  if(ts==="Canceled")return {on:false,label:"Закрыт",more:f.ye||f.la?`в ${f.ye||f.la}`:""};
+  if(ts==="Returning Series"||ts==="In Production"||ts==="Planned"||(!ts&&(f.ann||!f.ye&&f.la>=YEAR-1)))
+    return {on:true,label:"Продолжается",more:nx?`новая серия ${new Date(nx).toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"})}`:f.ann?`продлён ещё на ${f.ann} ${plural(f.ann,"сезон","сезона","сезонов")}`:""};
+  if(f.ye)return {on:false,label:f.k==="ms"?"Вышел целиком":"Завершён",more:`в ${f.ye}`};
+  return f.la?{on:null,label:`Новых серий нет с ${f.la}`,more:""}:null;
+}
+function statusPill(st){return `<span class="pill ${st.on?"on":st.on===false?"off":""}"><i></i>${st.label}</span>`}
+function seasons(f){return f.ss?`${f.ss} ${plural(f.ss,"сезон","сезона","сезонов")}`:""}
 // сколько серий целиком помещается в выбранное время
 function episodesTonight(f){return state.time<999?Math.floor(state.time/f.min):0}
 function hue(id){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))%360;return h}
@@ -282,8 +316,9 @@ function placeholder(f,big){
   return `<div class="poster ph${big?" big":""}" style="--h:${hue(f.id)}" role="img" aria-label="${esc(f.t)}"><b>${esc(f.t)}</b><small>${f.k?kindName(f)+", ":""}${years(f)}</small></div>`;
 }
 function card(f,i){
-  return `<a class="card" href="#film/${f.id}" data-id="${f.id}" style="--i:${Math.min((i||0)<FIRST?i||0:((i||0)-FIRST)%PAGE,12)}">${poster(f)}
-    <h3>${esc(f.t)}</h3><p>${f.k?`${kindName(f)} · ${years(f)}<br>серия ${dur(f.min)}, финал в`:`${f.y} · ${dur(f.min)}, финал в`} <span class="end">${endTime(f.min)}</span></p></a>`;
+  const st=status(f);
+  return `<a class="card" href="#film/${f.id}" data-id="${f.id}" style="--i:${Math.min((i||0)<FIRST?i||0:((i||0)-FIRST)%PAGE,12)}"><div class="pw">${poster(f)}${st&&st.on!==null?`<span class="badge ${st.on?"on":"off"}"><i></i>${st.label}</span>`:""}</div>
+    <h3>${esc(f.t)}</h3><p>${f.k?`${[kindName(f),f.k==="ms"?years(f):seasons(f)].filter(Boolean).join(" · ")}<br>серия ${dur(f.min)}, финал в`:`${f.y} · ${dur(f.min)}, финал в`} <span class="end">${endTime(f.min)}</span></p></a>`;
 }
 function getToday(){
   try{const s=JSON.parse(localStorage.getItem("knv-today")||"null");
@@ -372,8 +407,9 @@ function renderFilm(id){
       ${f.o?`<p class="orig">${esc(f.o)}</p>`:""}
       <dl class="facts">
         <div><dt>${f.k&&f.ye!==f.y?"Годы":"Год"}</dt><dd>${years(f)}</dd></div>
-        ${f.ss?`<div><dt>Сезонов</dt><dd>${f.ss}</dd></div>`:""}
-        ${f.ep?`<div><dt>Серий</dt><dd>${num(f.ep)}</dd></div>`:""}
+        ${f.ss?`<div><dt>Сезонов</dt><dd>${f.ss}${f.ann?` <span class="votes">+ ${f.ann} в планах</span>`:""}</dd></div>`:""}
+        ${f.ep?`<div><dt>Серий вышло</dt><dd>${num(f.ep)}</dd></div>`:""}
+        ${status(f)?`<div><dt>Статус</dt><dd>${statusPill(status(f))}${status(f).more?` <span class="votes">${status(f).more}</span>`:""}</dd></div>`:""}
         ${f.d.length?`<div><dt>${f.d.length>1?"Режиссёры":"Режиссёр"}</dt><dd>${esc(f.d.join(", "))}</dd></div>`:""}
         <div><dt>${f.k?"Серия":"Длительность"}</dt><dd>${dur(f.min)}</dd></div>
         <div><dt>IMDb</dt><dd>${f.imdb.toFixed(1)} <span class="votes">· ${num(f.v)} ${plural(f.v,"оценка","оценки","оценок")}</span></dd></div>
@@ -386,13 +422,18 @@ function renderFilm(id){
         <a class="btn ghost" href="${yt}" target="_blank" rel="noopener">Найти трейлер</a>
         <a class="btn ghost" href="https://www.imdb.com/title/${f.id}/" target="_blank" rel="noopener">Страница на IMDb</a>
       </div>
-      ${f.cast.length?`<div class="block"><h2>В ролях</h2><ul class="cast">${f.cast.map(p=>`<li>${esc(p.n)}${p.r?`<span>${esc(p.r)}</span>`:""}</li>`).join("")}</ul></div>`:""}
+      ${f.cast.length?`<div class="block" id="castBlock"><h2>В ролях</h2>${castList(f.cast.map(p=>[p.n,p.r,null]))}</div>`:`<div class="block" id="castBlock" hidden><h2>В ролях</h2></div>`}
     </div>
   </article>
   ${similar.length?`<section class="more reveal"><h2>Похожее</h2><div class="grid">${similar.map((f,i)=>card(f,i)).join("")}</div></section>`:""}`;
   app.querySelectorAll(".info>*").forEach((el,i)=>el.style.setProperty("--i",i));
-  if(f.hs)loadSyn(f).then(t=>{const el=document.getElementById("syn");if(!el||location.hash!=="#film/"+f.id)return;
-    if(t){el.textContent=t;el.removeAttribute("aria-busy")}else el.remove()});
+  if(f.hs)loadSyn(f).then(x=>{
+    if(location.hash!=="#film/"+f.id)return;
+    const el=document.getElementById("syn");
+    if(el){if(x.s){el.textContent=x.s;el.removeAttribute("aria-busy")}else el.remove()}
+    const cb=document.getElementById("castBlock");
+    if(cb&&x.c&&x.c.length){cb.innerHTML="<h2>В ролях</h2>"+castList(x.c);cb.hidden=false}
+  });
   window.scrollTo(0,0);
 }
 
