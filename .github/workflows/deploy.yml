@@ -18,7 +18,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-astro  # не «pages»: эту группу занимает встроенная выкладка GitHub из ветки
   cancel-in-progress: true
 
 jobs:
