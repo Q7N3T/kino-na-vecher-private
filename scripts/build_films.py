@@ -247,13 +247,18 @@ def tmdb(films):
         return tid, None
 
     # сериалы, закешированные до появления статуса, спрашиваем заново; статус меняется — раз в неделю обновляем
-    todo = [t for t in films if t not in cache or cache[t].get("cv") != CAST_VER
-            or (films[t].get("k") and not cache[t].get("tsd") == time.strftime("%Y-%W"))]
+    # раз в неделю спрашиваем заново всё: популярность меняется каждый день, у сериалов — статус,
+    # TMDB дополняет постеры и описания; в пределах недели повторный запуск берёт ответы из кеша
+    week = time.strftime("%Y-%W")
+    todo = [t for t in films if t not in cache or cache[t].get("cv") != CAST_VER or cache[t].get("tsd") != week]
     print(f"TMDB: {len(todo):,} запросов (в кеше {len(cache):,})", file=sys.stderr)
     with cf.ThreadPoolExecutor(8) as ex:
         for i, (tid, v) in enumerate(ex.map(get, todo), 1):
             if v is not None:
-                if films[tid].get("k"): v["tsd"] = time.strftime("%Y-%W")
+                old = cache.get(tid) or {}
+                for k in ("p", "t", "ov", "cr"):  # пустой ответ TMDB не стирает то, что было
+                    if not v.get(k) and old.get(k): v[k] = old[k]
+                v["tsd"] = week
                 cache[tid] = v
             if i % 500 == 0:
                 print(f"  {i:,}/{len(todo):,}", file=sys.stderr)
