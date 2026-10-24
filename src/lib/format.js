@@ -97,14 +97,14 @@ export function initials(n) {
 }
 
 // Карточка — одна разметка для страниц, собранных заранее, и для карточек, которые рисует браузер.
-export function cardHTML(f, base, i = 0) {
+export function cardHTML(f, base, i = 0, why = '') {
   const st = status(f);
   const meta = f.k ? [kindName(f), f.k === 'ms' ? years(f) : seasons(f)].filter(Boolean).join(' · ') : `${f.y} · ${dur(f.min)}`;
   const img = f.p
     ? `<img src="${tmdbImg(f.p, 342)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`
     : '';
   return `<a class="card" href="${titleUrl(base, f)}" data-id="${f.id}" style="--i:${Math.min(i, 12)}">
-  <div class="poster" style="--h:${hue(f.id)}">${img}<span class="ph">${esc(f.t)}</span>${st && st.on !== null ? `<span class="badge ${st.on ? 'on' : 'off'}"><i></i>${st.label}</span>` : ''}</div>
+  <div class="poster" style="--h:${hue(f.id)}">${img}<span class="ph">${esc(f.t)}</span>${st && st.on !== null ? `<span class="badge ${st.on ? 'on' : 'off'}"><i></i>${st.label}</span>` : ''}${why ? `<span class="why">${why}</span>` : ''}</div>
   <span class="card-t">${esc(f.t)}</span>
   <span class="card-m">${meta}</span>
   <span class="card-e">${f.k ? 'серия ' + dur(f.min) + ', ' : ''}финал в <b data-end="${f.min}"></b> · IMDb ${f.imdb.toFixed(1)}</span>
