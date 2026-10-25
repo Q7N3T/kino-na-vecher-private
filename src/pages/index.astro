@@ -33,52 +33,35 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
           <div class="chips three" role="group" aria-labelledby="l-kind" id="g-kind">{KINDS.map((k) => <button class="chip" data-kind={k.v} aria-pressed={String(k.v === DEF.kind)}>{k.chip}</button>)}</div></div>
       </div>
     </div>
-    <a class="pick" id="pick-card" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
-      <span class="pick-p poster" style={`--h:${hue(tonight[0].id)}`} id="pick-poster" set:html={tonight[0].p ? `<img src="${tmdbImg(tonight[0].p, 200)}" alt="" onerror="this.remove()">` : ''}></span>
-      <span class="pick-b">
-        <small id="pick-l">Выбор на сегодня</small>
-        <b id="pick-t">{tonight[0].t}</b>
-        <span id="pick-m">{tonight[0].k ? `${kindName(tonight[0])} · ${seasons(tonight[0])} · серия ${dur(tonight[0].min)}` : `${tonight[0].y} · ${dur(tonight[0].min)}`}</span>
-        <span class="pick-e" id="pick-e">Финал в <span data-end={tonight[0].min}></span></span>
-        <span class="pick-n">Новый выбор — в полночь</span>
-      </span>
-    </a>
+    <div class="pick" id="pick-card">
+      <a class="pick-a" id="pick-a" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
+        <span class="pick-p poster" style={`--h:${hue(tonight[0].id)}`} id="pick-poster" set:html={tonight[0].p ? `<img src="${tmdbImg(tonight[0].p, 200)}" alt="" onerror="this.remove()">` : ''}></span>
+        <span class="pick-b">
+          <small id="pick-l">Выбор на сегодня</small>
+          <b id="pick-t">{tonight[0].t}</b>
+          <span id="pick-m">{tonight[0].k ? `${kindName(tonight[0])} · ${seasons(tonight[0])} · серия ${dur(tonight[0].min)}` : `${tonight[0].y} · ${dur(tonight[0].min)} · IMDb ${tonight[0].imdb.toFixed(1)}`}</span>
+          <span class="pick-e" id="pick-e">Финал в <span data-end={tonight[0].min}></span></span>
+        </span>
+      </a>
+      <div class="pick-f">
+        <span class="pick-n" id="pick-n">Новый выбор — в полночь</span>
+        <button class="pick-n back" id="pick-back" type="button" hidden>← Выбор дня</button>
+        <button class="dice" id="dice" type="button" aria-label="Случайный выбор под ваш вечер">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>
+          <span id="dice-t">Не то? Случайный</span>
+        </button>
+      </div>
+    </div>
   </section>
 
   <section class="sec wrap" aria-labelledby="h-tonight">
     <div class="sec-h">
       <h2 id="h-tonight">Подходит на сегодня <small id="tonight-n"></small></h2>
       <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-        <button class="btn" id="lucky">Выбрать за меня</button>
         <a class="more-link" id="tonight-all" href={`${base}filmy/`}>Все →</a>
       </div>
     </div>
     <div class="grid row" id="tonight" set:html={curated.map((x, i) => cardHTML(x.f, base, i, WHY[x.why])).join('')}></div>
-  </section>
-
-  <section class="sec wrap rnd" aria-labelledby="h-rnd">
-    <div class="sec-h"><h2 id="h-rnd">Не знаю, что хочу</h2></div>
-    <div class="rnd-box">
-      <div class="rnd-btns">
-        <button class="btn rnd-main" data-rnd="any">
-          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"></rect><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"></circle><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"></circle><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"></circle><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"></circle></svg>
-          Случайный фильм</button>
-        <p class="rnd-or">или случайный, чтобы…</p>
-        <div class="chips moods">{MOODS.map((m) => <button class="chip" data-rnd={m.v}>{cap(m.word)}</button>)}</div>
-      </div>
-      <div class="rnd-card" id="rnd-card" aria-live="polite">
-        <span class="poster rnd-p" id="rnd-p"></span>
-        <div class="rnd-b">
-          <small id="rnd-l">Выпадет хороший фильм — от 7 на IMDb</small>
-          <b id="rnd-t">Нажмите кнопку слева</b>
-          <span id="rnd-m"></span>
-          <div class="rnd-acts" id="rnd-acts" hidden>
-            <a class="btn" id="rnd-open" href="#">Открыть</a>
-            <button class="btn ghost" id="rnd-again">Ещё</button>
-          </div>
-        </div>
-      </div>
-    </div>
   </section>
 
   <section class="sec band" aria-labelledby="h-colls">
@@ -116,45 +99,36 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
   .slot.pop { animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
   .pickers { display: grid; gap: 16px; margin-top: 32px; }
   .picker-l { margin: 0 0 8px; font-size: 14px; color: var(--dim); }
-  .pick { flex: 1 1 320px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 22px; display: flex; gap: 18px; align-items: center; text-decoration: none; color: var(--text); transition: border-color .2s, transform .3s; }
-  .pick:hover { color: var(--text); border-color: var(--line-2); transform: translateY(-3px); }
+  .pick { flex: 1 1 320px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 14px; transition: border-color .2s, transform .3s; }
+  .pick:hover { border-color: var(--line-2); transform: translateY(-3px); }
+  .pick-a { display: flex; gap: 18px; align-items: center; text-decoration: none; color: var(--text); }
+  .pick-a:hover { color: var(--text); }
   .pick-p { width: 96px; flex-shrink: 0; margin: 0; }
   .pick-b { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .pick-b small { font-size: 13px; color: var(--dim); }
   .pick-b b { font-size: 20px; font-weight: 600; line-height: 1.25; }
   .pick-b > span { font-size: 14px; color: var(--muted); }
   .pick-b .pick-e { color: var(--accent); }
-  .pick-b .pick-n { font-size: 12px; color: var(--dim); margin-top: 2px; }
+  .pick-f { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .pick-n { font-size: 12px; color: var(--dim); min-width: 0; }
+  .pick-n.back { background: none; border: 0; padding: 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .dice { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color .2s, color .2s; }
+  .dice:hover { border-color: var(--accent); color: var(--accent); }
+  .dice:active { transform: scale(.97); }
+  .dice.roll svg { animation: tumble .6s cubic-bezier(.3, .7, .4, 1); }
+  @keyframes tumble { 0% { transform: rotate(0) } 100% { transform: rotate(540deg) } }
+  .pick.spin #pick-t { color: var(--dim); }
+  .pick.spin #pick-m, .pick.spin #pick-e, .pick.spin .pick-p img { visibility: hidden; }
+  .pick.done .pick-a { animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
   @keyframes pop { 0% { transform: scale(.85); opacity: .3; } 100% { transform: none; opacity: 1; } }
-  .rnd { padding-top: 8px; }
-  .rnd-box { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; align-items: stretch; }
-  .rnd-btns { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; justify-content: center; }
-  .rnd-main { height: 56px; padding: 0 28px; font-size: 17px; }
-  .rnd-or { margin: 4px 0 0; color: var(--dim); font-size: 14px; }
-  .rnd-card { display: flex; gap: 20px; align-items: center; padding: 20px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); min-height: 200px; }
-  .rnd-p { width: 120px; flex-shrink: 0; margin: 0; }
-  .rnd-b { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .rnd-b small { font-size: 13px; color: var(--dim); }
-  .rnd-b b { font-size: 24px; font-weight: 600; line-height: 1.2; }
-  .rnd-b > span { color: var(--muted); font-size: 15px; }
-  .rnd-acts { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-  .rnd-card.spin b { color: var(--dim); }
-  .rnd-card.done { animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
-  [data-rnd][aria-pressed="true"] { border-color: var(--accent); }
-  @media (max-width: 760px) {
-    .rnd-box { grid-template-columns: minmax(0, 1fr); }
-    .rnd-btns { align-items: stretch; }
-    .rnd-main { width: 100%; }
-    .rnd-card { padding: 14px; gap: 14px; min-height: 0; }
-    .rnd-p { width: 84px; }
-    .rnd-b b { font-size: 19px; }
-  }
   @media (max-width: 760px) {
     .hero { padding-top: 24px; gap: 24px; }
     .eyebrow { margin-bottom: 12px; }
     .pickers { margin-top: 22px; gap: 12px; }
     .picker-l { font-size: 13px; margin-bottom: 6px; }
-    .pick { padding: 14px; gap: 14px; border-radius: 16px; }
+    .pick { padding: 14px; gap: 12px; border-radius: 16px; }
+    .pick-a { gap: 14px; }
+    .pick-f { padding-top: 10px; }
     .pick-p { width: 64px; }
     .pick-b b { font-size: 17px; }
   }
@@ -164,14 +138,13 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
   import { loadIndex, matches, base, watchlist } from '../lib/client.js';
   import { profile } from '../lib/taste.js';
   import { curate, dailyPick } from '../lib/curate.js';
-  import { cardHTML, MOODS, TIMES, KINDS, plural, dur, kindName, seasons, tmdbImg } from '../lib/format.js';
+  import { cardHTML, MOODS, TIMES, KINDS, plural, dur, kindName, seasons, tmdbImg, hue } from '../lib/format.js';
 
   const state = { time: 105, mood: 'laugh', kind: 'any' };
   // метка на постере: почему тайтл в подборке
   const WHY: Record<string, string> = { gem: 'Находка', classic: 'Классика', taste: 'По вашему вкусу' };
   try { Object.assign(state, JSON.parse(sessionStorage.getItem('knv-pick') || '{}')); } catch {}
   let list = [];
-  let picks: any[] = []; // отобранные 12 — из них «Выбрать за меня»
   const $ = (id) => document.getElementById(id)!;
 
   function label() {
@@ -190,7 +163,6 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
     const matched = all.filter((f) => matches(f, state));
     const { items, rest } = curate(matched, { time: state.time, mood: state.mood, prof, day: new Date().toDateString() });
     list = [...items.map((x) => x.f), ...rest];
-    picks = items.map((x) => x.f);
     const forms = KINDS.find((k) => k.v === state.kind)!.forms;
     $('tonight-n').textContent = list.length ? list.length.toLocaleString('ru-RU') + ' ' + plural(list.length, ...forms) + (prof.n ? ' · с учётом ваших вкусов' : '') : '';
     dedupe(new Set(list.slice(0, 12).map((f) => f.id)));
@@ -200,16 +172,58 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
     const q = new URLSearchParams({ time: String(state.time), mood: state.mood });
     $('tonight-all').setAttribute('href', `${base}${state.kind === 'series' ? 'serialy' : 'filmy'}/?${q}`);
     // выбор дня: меняется в полночь, при тех же фильтрах весь день один и тот же
-    const f = dailyPick(matched, { ...state, prof, watch: watchlist() });
-    $('pick-l').textContent = prof.n ? 'Выбор на сегодня — по вашим вкусам' : 'Выбор на сегодня';
+    pool = matched;
+    daily = dailyPick(matched, { ...state, prof, watch: watchlist() });
+    dailyLabel = prof.n ? 'Выбор на сегодня — по вашим вкусам' : 'Выбор на сегодня';
+    showPick(daily, dailyLabel, false);
+  }
+
+  // карточка наверху: выбор дня или случайный, если нажали кубик
+  function showPick(f: any, l: string, rnd: boolean) {
     ($('pick-card') as HTMLElement).hidden = !f;
-    if (f) {
-      ($('pick-card') as HTMLAnchorElement).href = `${base}${f.k ? 'serial' : 'film'}/${f.slug}/`;
-      $('pick-t').textContent = f.t;
-      $('pick-m').textContent = f.k ? `${kindName(f)} · ${seasons(f)} · серия ${dur(f.min)}` : `${f.y} · ${dur(f.min)}`;
-      $('pick-e').innerHTML = `Финал в <span data-end="${f.min}"></span>`;
-      $('pick-poster').innerHTML = f.p ? `<img src="${tmdbImg(f.p, 200)}" alt="" onerror="this.remove()">` : '';
+    if (!f) return;
+    $('pick-l').textContent = l;
+    ($('pick-a') as HTMLAnchorElement).href = `${base}${f.k ? 'serial' : 'film'}/${f.slug}/`;
+    $('pick-t').textContent = f.t;
+    $('pick-m').textContent = f.k ? `${kindName(f)} · ${seasons(f)} · серия ${dur(f.min)}` : `${f.y} · ${dur(f.min)} · IMDb ${f.imdb.toFixed(1)}`;
+    $('pick-e').innerHTML = `Финал в <span data-end="${f.min}"></span>`;
+    $('pick-poster').innerHTML = f.p ? `<img src="${tmdbImg(f.p, 200)}" alt="" onerror="this.remove()">` : '';
+    $('pick-poster').style.setProperty('--h', String(hue(f.id)));
+    $('pick-n').hidden = rnd;
+    $('pick-back').hidden = !rnd;
+    $('dice-t').textContent = rnd ? 'Ещё случайный' : 'Не то? Случайный';
+  }
+
+  // кубик: случайный хороший тайтл под ту же фразу — время, настроение, фильм или сериал.
+  // От 7 на IMDb, от 25 тыс. оценок, с русским названием; недавно выпавшие не повторяются.
+  let daily: any = null, dailyLabel = '', pool: any[] = [], rolling = false;
+  const recent: string[] = [];
+  async function roll() {
+    if (rolling) return;
+    const docOk = (f: any) => !f.genres.includes('документальный') || state.mood === 'think' || state.mood === 'inspire';
+    let cand = pool.filter((f) => f.imdb >= 7 && f.v >= 25000 && /[а-яё]/i.test(f.t) && docOk(f) && f !== daily);
+    if (!cand.length) cand = pool.filter((f) => f !== daily);
+    const fresh = cand.filter((f) => !recent.includes(f.id));
+    if (fresh.length) cand = fresh;
+    const f = cand[Math.floor(Math.random() * cand.length)];
+    if (!f) return;
+    recent.push(f.id); if (recent.length > 30) recent.shift();
+    const card = $('pick-card'), dice = $('dice'), t = $('pick-t');
+    card.classList.remove('done'); dice.classList.remove('roll'); void dice.offsetWidth; dice.classList.add('roll');
+    // короткая «рулетка» из названий, потом результат
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      rolling = true;
+      card.classList.add('spin');
+      for (let i = 0; i < 12; i++) {
+        t.textContent = cand[Math.floor(Math.random() * cand.length)].t;
+        await new Promise((r) => setTimeout(r, 40 + i * i * 1.5));
+      }
+      card.classList.remove('spin');
+      rolling = false;
     }
+    const mw = MOODS.find((m) => m.v === state.mood);
+    showPick(f, mw ? `Случайный выбор — ${mw.word}` : 'Случайный выбор', true);
+    void card.offsetWidth; card.classList.add('done');
   }
 
   document.addEventListener('click', (e) => {
@@ -225,63 +239,14 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
       document.querySelectorAll<HTMLElement>('[data-pop]').forEach((g) => (g.hidden = g.dataset.pop !== d.tab));
       document.querySelectorAll<HTMLElement>('[data-tab]').forEach((t) => t.setAttribute('aria-pressed', String(t === b)));
       return;
-    } else if (d.rnd) { roll(d.rnd); return; }
-    else if (b.id === 'rnd-again') { roll(lastRnd); return; }
-    else if (b.id === 'lucky') {
-      // случайный из отобранных: находки, свежее, классика, по вкусу — а не из всего списка
-      const pool = picks.length ? picks : list.slice(0, 12);
-      const f = pool[Math.floor(Math.random() * pool.length)];
-      if (f) location.href = `${base}${f.k ? 'serial' : 'film'}/${f.slug}/`;
-      return;
-    } else return;
+    } else if (b.id === 'dice') { roll(); return; }
+    else if (b.id === 'pick-back') { showPick(daily, dailyLabel, false); return; }
+    else return;
     try { sessionStorage.setItem('knv-pick', JSON.stringify(state)); } catch {}
     label();
     const s = $(changed); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop');
     update();
   });
-
-  // «Не знаю, что хочу»: случайный хороший фильм — любой или под настроение.
-  // Только фильмы от 7 на IMDb, от 25 тыс. оценок, с русским названием; недавно выпавшие не повторяются.
-  let lastRnd = 'any', rolling = false;
-  const recent: string[] = [];
-  async function roll(mood: string) {
-    if (rolling) return;
-    lastRnd = mood;
-    document.querySelectorAll<HTMLElement>('[data-rnd]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.rnd === mood && mood !== 'any')));
-    const all = await loadIndex();
-    const docOk = (f: any) => !f.genres.includes('документальный') || mood === 'think' || mood === 'inspire';
-    let pool = all.filter((f: any) => !f.k && f.imdb >= 7 && f.v >= 25000 && /[а-яё]/i.test(f.t) && docOk(f) && (mood === 'any' || f.m.includes(mood)));
-    const fresh = pool.filter((f: any) => !recent.includes(f.id));
-    if (fresh.length) pool = fresh;
-    const f = pool[Math.floor(Math.random() * pool.length)];
-    if (!f) return;
-    recent.push(f.id); if (recent.length > 30) recent.shift();
-
-    const card = $('rnd-card'), t = $('rnd-t');
-    $('rnd-acts').hidden = true;
-    card.classList.remove('done');
-    // короткая «рулетка» из названий, потом результат
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      rolling = true;
-      card.classList.add('spin');
-      $('rnd-m').textContent = '';
-      for (let i = 0; i < 12; i++) {
-        t.textContent = pool[Math.floor(Math.random() * pool.length)].t;
-        await new Promise((r) => setTimeout(r, 45 + i * i * 2.5));
-      }
-      card.classList.remove('spin');
-      rolling = false;
-    }
-    const mw = MOODS.find((m) => m.v === mood);
-    $('rnd-l').textContent = mw ? `Случайный фильм, чтобы ${mw.word}` : 'Случайный фильм';
-    t.textContent = f.t;
-    $('rnd-m').textContent = `${f.y} · ${dur(f.min)} · IMDb ${f.imdb.toFixed(1)} · ${f.genres.slice(0, 2).join(', ')}`;
-    $('rnd-p').innerHTML = f.p ? `<img src="${tmdbImg(f.p, 240)}" alt="" onerror="this.remove()">` : `<span class="ph">${f.t.replace(/[<>&]/g, '')}</span>`;
-    ($('rnd-p') as HTMLElement).style.setProperty('--h', String([...f.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0)));
-    ($('rnd-open') as HTMLAnchorElement).href = `${base}film/${f.slug}/`;
-    $('rnd-acts').hidden = false;
-    void card.offsetWidth; card.classList.add('done');
-  }
 
   // «Популярное сейчас» без повторов с подборкой выше: по 12 карточек, уже показанные пропускаем
   function dedupe(shown: Set<string>) {
