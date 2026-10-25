@@ -11,6 +11,9 @@ const total = f.k && f.ep ? f.ep * f.min : 0;
 const section = f.k ? 'serialy/' : 'filmy/';
 const desc = f.syn ? f.syn.slice(0, 180).replace(/\s+\S*$/, '') + '…' : `${kindName(f)} ${years(f)}. Рейтинг IMDb ${f.imdb.toFixed(1)}.`;
 const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${f.o || f.t} ${f.y} трейлер`);
+// где посмотреть: подписка, бесплатно, с рекламой, аренда, покупка (данные JustWatch через TMDB)
+const WATCH = [['s', 'По подписке'], ['f', 'Бесплатно'], ['a', 'Бесплатно с рекламой'], ['r', 'Аренда'], ['b', 'Покупка']];
+const watchGroups = f.wp ? WATCH.filter(([k]) => f.wp[k]?.length).map(([k, label]) => ({ label, items: f.wp[k] })) : [];
 const moodTags = f.m.map((m) => MOODS.find((x) => x.v === m)?.tag).filter(Boolean);
 const jsonld = {
   '@context': 'https://schema.org', '@type': f.k ? 'TVSeries' : 'Movie', name: f.t, alternateName: f.o, datePublished: String(f.y),
@@ -60,6 +63,25 @@ const jsonld = {
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg><span>Хочу посмотреть</span></button>
             <a class="btn ghost" href={yt} rel="noopener" target="_blank"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"></path></svg>Трейлер</a>
           </div>
+          {watchGroups.length > 0 && (
+            <section class="where" aria-labelledby="h-where">
+              <h2 id="h-where">Где посмотреть</h2>
+              {watchGroups.map((g) => (
+                <div class="where-row">
+                  <span class="where-k">{g.label}</span>
+                  <ul>
+                    {g.items.map(([, name, logo]) => (
+                      <li><a href={f.wp.l} rel="noopener sponsored" target="_blank">
+                        {logo && <img src={tmdbImg(logo, 64, 'w92')} alt="" width="28" height="28" loading="lazy" onerror="this.remove()" />}
+                        <span>{name}</span>
+                      </a></li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              <p class="where-src">Легальные онлайн-кинотеатры в России. Данные — <a href="https://www.justwatch.com" rel="noopener" target="_blank">JustWatch</a>.</p>
+            </section>
+          )}
         </div>
       </div>
     </div>
@@ -132,6 +154,16 @@ const jsonld = {
   .clock b { font-size: 32px; font-weight: 600; color: var(--accent); line-height: 1; }
   .clock span { font-size: 15px; color: var(--muted); line-height: 1.4; }
   .acts { display: flex; flex-wrap: wrap; gap: 12px; }
+  .where { max-width: 720px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: rgba(22, 26, 34, .6); display: grid; gap: 12px; }
+  .where h2 { margin: 0; font-size: 17px; font-weight: 600; }
+  .where-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .where-k { font-size: 13px; color: var(--dim); min-width: 92px; }
+  .where ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .where li a { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--text); text-decoration: none; font-size: 14px; font-weight: 500; transition: border-color .2s; }
+  .where li a:hover { border-color: var(--accent); }
+  .where img { width: 28px; height: 28px; border-radius: 8px; object-fit: cover; }
+  .where-src { margin: 0; font-size: 12px; color: var(--dim); }
+  .where-src a { color: inherit; }
   .t-body { display: flex; flex-wrap: wrap; gap: 48px; padding-top: 48px; padding-bottom: 16px; }
   .t-main { flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 44px; }
   .t-main h2, .box h2 { margin: 0 0 16px; font-size: 22px; font-weight: 600; }

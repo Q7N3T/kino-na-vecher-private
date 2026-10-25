@@ -201,6 +201,24 @@ def build_imdb(min_votes):
     return films
 
 
+WATCH_REGION = "RU"
+WATCH_KINDS = {"flatrate": "s", "free": "f", "ads": "a", "rent": "r", "buy": "b"}  # подписка, бесплатно, с рекламой, аренда, покупка
+NO_PROVIDERS = re.compile(r"кинопоиск|kinopoisk|яндекс|yandex", re.I)  # без сервисов Яндекса
+
+
+def watch_providers(det):
+    """Где посмотреть легально в России (данные JustWatch через TMDB): {"l": ссылка, "s": [[id, имя, лого], …], …}."""
+    r = ((det.get("watch/providers") or {}).get("results") or {}).get(WATCH_REGION) or {}
+    out = {}
+    for src, key in WATCH_KINDS.items():
+        items = [[p.get("provider_id"), p.get("provider_name"), p.get("logo_path")]
+                 for p in sorted(r.get(src) or [], key=lambda p: p.get("display_priority", 99))
+                 if p.get("provider_name") and not NO_PROVIDERS.search(p["provider_name"])]
+        if items: out[key] = items[:6]
+    if out and r.get("link"): out["l"] = r["link"]
+    return out or None
+
+
 def tmdb(films):
     key = os.environ.get("TMDB_API_KEY")
     if not key:
@@ -236,9 +254,9 @@ def tmdb(films):
                 v = {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview"), "pop": m.get("popularity")}
                 if m.get("id"):
                     tv = bool(j.get("tv_results")) and not j.get("movie_results")
-                    # подробности одним запросом: состав с фото, а у сериала ещё статус
+                    # подробности одним запросом: состав с фото, где посмотреть, а у сериала ещё статус
                     det = api(f"https://api.themoviedb.org/3/{'tv' if tv else 'movie'}/{m['id']}",
-                              {"language": "ru-RU", "append_to_response": "aggregate_credits" if tv else "credits"})
+                              {"language": "ru-RU", "append_to_response": ("aggregate_credits" if tv else "credits") + ",watch/providers"})
                     if det:
                         if tv:
                             v["ts"] = det.get("status")
@@ -247,6 +265,8 @@ def tmdb(films):
                         cast = (det.get("aggregate_credits") if tv else det.get("credits") or {}) or {}
                         v["cr"] = [[c.get("name"), (c.get("roles") or [{}])[0].get("character") if tv else c.get("character"), c.get("profile_path")]
                                    for c in (cast.get("cast") or [])[:CAST]]
+                        wp = watch_providers(det)
+                        if wp: v["wp"] = wp
                     v["cv"] = CAST_VER
                 return tid, v
             except urllib.error.HTTPError as e:
@@ -283,7 +303,7 @@ def tmdb(films):
         if m.get("t") and (re.search("[а-яё]", m["t"], re.I) or not re.search("[а-яё]", f["t"], re.I)): f["t"] = m["t"]
         if m.get("ov"): f["syn"] = m["ov"]
         if m.get("pop"): f["pop"] = round(m["pop"], 1)  # популярность TMDB — порядок как на их сайте
-        for k in ("ts", "nx", "cr"):
+        for k in ("ts", "nx", "cr", "wp"):
             f.pop(k, None)
             if m.get(k): f[k] = m[k]
 
@@ -346,7 +366,7 @@ def wikidata(films):
 
 SYN = os.path.join(ROOT, "data", "syn")
 SYN_PARTS = 64  # описания и состав с фото лежат отдельно и грузятся только на странице фильма
-CAST, CAST_VER = 10, 1  # сколько актёров брать из TMDB; версия — чтобы перезапросить кеш при изменениях
+CAST, CAST_VER = 10, 2  # сколько актёров брать из TMDB; версия — чтобы перезапросить кеш при изменениях (2: где посмотреть)
 INDEX = os.path.join(ROOT, "index.html")
 
 
@@ -361,7 +381,7 @@ def write(films):
         f["genres"] = [GENRES_RU.get(x, x.lower()) for x in f.pop("g")]
         if f["o"] == f["t"]: f.pop("o")
         f.pop("hs", None)
-        extra = {k: v for k, v in (("s", f.pop("syn", None)), ("c", f.pop("cr", None)), ("x", f.pop("sx", None))) if v}
+        extra = {k: v for k, v in (("s", f.pop("syn", None)), ("c", f.pop("cr", None)), ("x", f.pop("sx", None)), ("w", f.pop("wp", None))) if v}
         if extra:
             parts[syn_part(f["id"])][f["id"]] = extra
             f["hs"] = 1
@@ -401,6 +421,7 @@ def load_existing():
         if isinstance(x, str): x = {"s": x}  # старый формат: только описание
         if x and x.get("s"): f["syn"] = x["s"]
         if x and x.get("c"): f["cr"] = x["c"]
+        if x and x.get("w"): f["wp"] = x["w"]
         if x and x.get("x"): f["sx"] = x["x"]
         films[f["id"]] = f
     return films

@@ -45,6 +45,7 @@ export function load() {
     f.syn = x.s || '';
     f.crew = (x.c || []).filter((c) => c[0]).map(([n, r, p]) => ({ n, r: r || '', p: p || '' }));
     f.sx = x.x || [];
+    f.wp = x.w || null; // где посмотреть в России: {l, s, f, a, r, b}
     if (!f.crew.length) f.crew = (f.cast || []).map((c) => ({ n: c.n, r: c.r || '', p: '' }));
   }
   films.sort((a, b) => b.pp - a.pp);
