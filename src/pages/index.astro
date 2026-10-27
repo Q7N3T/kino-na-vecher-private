@@ -185,7 +185,12 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
   .dice.roll :global(svg) { animation: tumble .6s var(--ease); }
   @keyframes tumble { 0% { transform: rotate(0) } 100% { transform: rotate(540deg) } }
   .pick.spin #pick-t { color: var(--dim); }
-  .pick.spin #pick-m, .pick.spin #pick-e, .pick.spin .pick-p img { visibility: hidden; }
+  .pick.spin #pick-m, .pick.spin #pick-e { visibility: hidden; }
+  .pick-p :global(.reel) { position: absolute; inset: 0; display: flex; flex-direction: column; height: calc(var(--n) * 100%); animation: reel var(--t) var(--ease) both; }
+  .pick-p :global(.reel-i) { position: relative; flex: 1 1 0; overflow: hidden; background: hsl(var(--h) 26% 20%); }
+  .pick-p :global(.reel-i img) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+  .pick-p :global(.reel-i .ph) { font-size: 12px; padding: 8px; }
+  @keyframes reel { from { transform: translateY(0); } to { transform: translateY(calc(-100% + 100% / var(--n))); } }
   .pick.done .pick-a { animation: pop .45s var(--ease); }
   @keyframes pop { 0% { transform: scale(.92); opacity: .3; } 100% { transform: none; opacity: 1; } }
 
@@ -320,7 +325,9 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     ($('pick-a') as HTMLAnchorElement).href = `${base}${f.k ? 'serial' : 'film'}/${f.slug}/`;
     $('pick-t').textContent = f.t;
     $('pick-m').textContent = f.k ? `${kindName(f)} · ${seasons(f)} · серия ${dur(f.min)}` : `${f.y} · ${dur(f.min)} · IMDb ${f.imdb.toFixed(1)}`;
-    $('pick-e').innerHTML = `Финал в <span data-end="${f.min}"></span>`;
+    // время финала меняем в том же элементе — тогда цифры перещёлкиваются, а не появляются заново
+    const end = $('pick-e').querySelector<HTMLElement>('[data-end]');
+    if (end) end.dataset.end = String(f.min); else $('pick-e').innerHTML = `Финал в <span data-end="${f.min}"></span>`;
     $('pick-poster').innerHTML = f.p ? `<img src="${tmdbImg(f.p, 200)}" alt="" onerror="knvImg(this)">` : '';
     $('pick-poster').style.setProperty('--h', String(hue(f.id)));
     $('pick-n').hidden = rnd;
@@ -344,14 +351,27 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     recent.push(f.id); if (recent.length > 30) recent.shift();
     const card = $('pick-card'), dice = $('dice'), t = $('pick-t');
     card.classList.remove('done'); dice.classList.remove('roll'); void dice.offsetWidth; dice.classList.add('roll');
-    // короткая «рулетка» из названий, потом результат
+    // барабан: постеры прокручиваются и останавливаются на выпавшем, название меняется вместе с ними
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
       rolling = true;
       card.classList.add('spin');
-      for (let i = 0; i < 12; i++) {
-        t.textContent = cand[Math.floor(Math.random() * cand.length)].t;
-        await new Promise((r) => setTimeout(r, 40 + i * i * 1.5));
-      }
+      const others = cand.filter((x) => x !== f).sort(() => Math.random() - 0.5);
+      const reel = [...others.filter((x) => x.p), ...others.filter((x) => !x.p)].slice(0, 11).concat(f);
+      const n = reel.length, TIME = 1400;
+      $('pick-poster').innerHTML = `<span class="reel" style="--n:${n};--t:${TIME}ms">${reel.map((x) =>
+        `<span class="reel-i" style="--h:${hue(x.id)}">${x.p ? `<img src="${tmdbImg(x.p, 200)}" alt="" onerror="knvImg(this)">` : ''}<span class="ph">${x.t.replace(/[<>&]/g, '')}</span></span>`).join('')}</span>`;
+      // барабан тормозит, как кривая анимации: i-й постер в центре примерно в момент 1 − (1 − i/(n−1))^¼
+      const t0 = performance.now();
+      await new Promise<void>((done) => {
+        let i = 0;
+        const step = () => {
+          const k = (performance.now() - t0) / TIME;
+          while (i < n - 1 && k >= 1 - Math.pow(1 - (i + 0.5) / (n - 1), 0.25)) i++;
+          t.textContent = reel[i].t;
+          if (k < 1) requestAnimationFrame(step); else done();
+        };
+        requestAnimationFrame(step);
+      });
       card.classList.remove('spin');
       rolling = false;
     }

@@ -168,6 +168,23 @@ html.intro-on .enter { animation-play-state: paused; }
 html.intro-on.intro-open .enter { animation-play-state: running; }
 @keyframes enter { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
 
+/* время финала: цифры одинаковой ширины, сменившиеся падают сверху */
+[data-end], [data-now] { font-variant-numeric: tabular-nums; }
+.tick { display: inline-block; animation: tick 500ms var(--ease) both; animation-delay: calc(var(--i) * 40ms); }
+@keyframes tick { from { opacity: 0; transform: translateY(-60%) rotateX(70deg); } to { opacity: 1; transform: none; } }
+
+/* переход между страницами: шапка стоит на месте, страница плавно сменяется,
+   постер с карточки переезжает на своё место на странице фильма */
+@view-transition { navigation: auto; }
+.bar { view-transition-name: bar; }
+.tabbar { view-transition-name: tabbar; }
+.t-poster { view-transition-name: poster; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 300ms; animation-timing-function: cubic-bezier(.22, 1, .36, 1); }
+::view-transition-group(poster) { animation-duration: 500ms; animation-timing-function: cubic-bezier(.22, 1, .36, 1); }
+::view-transition-group(poster) { z-index: 5; }
+::view-transition-old(poster), ::view-transition-new(poster) { height: 100%; object-fit: cover; }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes glow { 0%, 100% { box-shadow: 0 0 12px var(--accent); } 50% { box-shadow: 0 0 22px var(--accent); } }
 @keyframes shimmer { to { background-position: -200% 0; } }

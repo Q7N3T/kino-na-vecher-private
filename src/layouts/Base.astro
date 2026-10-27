@@ -68,7 +68,7 @@ const CONTACT = ''; // почта для сотрудничества, напр�
         // как начало сеанса: точка разгорается, проявляется название, проходит луч, кадр раскрывается
         let done = false;
         const finish = () => { if (done) return; done = true; html.classList.remove('intro-on', 'intro-open'); el.remove(); try { sessionStorage.setItem('knv-intro', '1'); } catch {} };
-        const open = () => { if (html.classList.contains('intro-open')) return; html.classList.add('intro-open'); setTimeout(finish, 750); };
+        const open = () => { if (done || html.classList.contains('intro-open')) return; html.classList.add('intro-open'); setTimeout(finish, 750); };
         // отсчёт — с первого кадра: пока грузятся шрифты, страница ещё не нарисована
         requestAnimationFrame(() => setTimeout(open, 1500));
         // любое действие пропускает заставку
@@ -125,12 +125,18 @@ const CONTACT = ''; // почта для сотрудничества, напр�
 <script>
   // время окончания считается в браузере зрителя: «финал в 22:44, если начать сейчас»
   import { pad } from '../lib/format.js';
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fill = () => {
     const now = Date.now();
     document.querySelectorAll<HTMLElement>('[data-end]').forEach((el) => {
       const d = new Date(now + Number(el.dataset.end) * 60000);
       const v = pad(d.getHours()) + ':' + pad(d.getMinutes());
-      if (el.textContent !== v) el.textContent = v; // иначе MutationObserver ниже зациклится
+      const old = el.textContent || '';
+      if (old === v) return; // иначе MutationObserver ниже зациклится
+      // время сменилось — изменившиеся цифры перещёлкиваются, как на табло
+      el.innerHTML = old.length === v.length && !reduce
+        ? [...v].map((c, i) => (c === old[i] ? c : `<span class="tick" style="--i:${i}">${c}</span>`)).join('')
+        : v;
     });
     document.querySelectorAll<HTMLElement>('[data-now]').forEach((el) => {
       const d = new Date(now);
@@ -140,8 +146,24 @@ const CONTACT = ''; // почта для сотрудничества, напр�
   };
   fill();
   setInterval(fill, 30000);
+
+  // переход к фильму: постер нажатой карточки получает то же имя, что постер на странице фильма
+  const named = () => document.querySelectorAll<HTMLElement>('[data-vt]').forEach((p) => { p.style.viewTransitionName = ''; delete p.dataset.vt; });
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = (e.target as HTMLElement).closest('a[href]');
+    const p = a?.querySelector<HTMLElement>('.poster');
+    if (!p || p.classList.contains('t-poster')) return;
+    named();
+    // на странице фильма имя уже занято его постером: одно имя — один элемент, иначе браузер отменит переход
+    document.querySelectorAll<HTMLElement>('.t-poster').forEach((t) => { t.style.viewTransitionName = 'none'; t.dataset.vt = '1'; });
+    p.style.viewTransitionName = 'poster';
+    p.dataset.vt = '1';
+  });
+  addEventListener('pageshow', named); // вернулись назад — имя больше не нужно
   // карточки, которые дорисовывает браузер, тоже получают время
-  new MutationObserver(fill).observe(document.querySelector('main')!, { childList: true, subtree: true });
+  // и те, у которых сменилась длительность (карточка «Выбор на сегодня» после кубика)
+  new MutationObserver(fill).observe(document.querySelector('main')!, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-end'] });
 </script>
 </body>
 </html>
