@@ -2,7 +2,8 @@
 import Base from '../layouts/Base.astro';
 import { load, COLLECTIONS, collection } from '../lib/data.js';
 import { curate } from '../lib/curate.js';
-import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur } from '../lib/format.js';
+import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur, num } from '../lib/format.js';
+import { icon } from '../lib/icons.js';
 
 const base = import.meta.env.BASE_URL;
 const { films } = load();
@@ -18,12 +19,38 @@ const popular = {
   series: films.filter((f) => f.k).slice(0, 24),
 };
 const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 100000).length }));
+const nSeries = films.filter((f) => f.k).length;
+// слоган: каждое слово отдельно, чтобы при прокрутке они проявлялись по одному
+const TAGLINE = ['Не листайте каталог весь вечер.', 'Скажите, сколько есть времени, и через минуту начинайте смотреть.'];
+const STEPS = [
+  ['Сколько есть времени', 'Полтора часа, два или весь вечер. Фильмы длиннее не попадут в подборку, а у сериала считается одна серия.'],
+  ['Какое настроение', 'Посмеяться, понервничать, погрустить, подумать или вдохновиться. Жанры уже разобраны по настроению.'],
+  ['Во сколько финал', 'На каждой карточке видно, когда закончится фильм или серия, если начать прямо сейчас.'],
+];
+const BENEFITS = [
+  ['Находки, а не только хиты', 'в подборке рядом с известным есть фильмы с высоким рейтингом, о которых говорят реже.'],
+  ['Честные сезоны', 'считаем только вышедшие серии, а у сериала видно, продолжается он или завершён.'],
+  ['Без регистрации', 'подбор учится на том, что вы открываете, и хранит это только в вашем браузере.'],
+  ['Где посмотреть', 'на странице фильма собраны легальные онлайн кинотеатры в России.'],
+];
+const FAQ = [
+  ['Как работает подбор?', 'Вы выбираете, сколько есть времени, какое настроение и что смотреть: фильм или сериал. Подборка из двенадцати карточек собирается из нескольких источников: находки с высоким рейтингом, свежие фильмы последних пяти лет, классика и, если есть история, то, что похоже на ваш вкус.'],
+  ['Почему «Выбор на сегодня» каждый день новый?', 'Это один фильм или сериал на весь день, обычно находка. Он меняется в полночь, а при тех же фильтрах весь день остаётся одним и тем же. Кнопка с кубиком предложит случайный вариант, а «Выбор дня» вернёт его обратно.'],
+  ['Что значит метка «Находка»?', 'Фильм с высоким рейтингом IMDb и не меньше чем 20 тысячами оценок, который при этом мало кто смотрел. Такие подборки меняются каждый день.'],
+  ['Можно посмотреть фильм прямо на сайте?', 'Нет. Мы помогаем выбрать, а на странице фильма показываем, в каких легальных онлайн кинотеатрах он есть: по подписке, бесплатно, в аренду или на покупку.'],
+  ['Откуда рейтинги и описания?', 'Названия, годы, длительность, жанры, рейтинги, сезоны и серии взяты из открытых данных IMDb. Постеры, описания и фото актёров взяты из TMDB, а данные о кинотеатрах из JustWatch.'],
+  ['Как часто обновляется база?', 'Каждую неделю, в ночь на понедельник. В базе фильмы и сериалы, у которых на IMDb не меньше 10 тысяч оценок.'],
+  ['Нужна ли регистрация?', 'Нет. Список «Хочу посмотреть» и история для подбора хранятся только в вашем браузере. Стереть историю можно на странице «Хочу посмотреть».'],
+  ['Сколько это стоит?', 'Ничего. Сайт бесплатный и без рекламы.'],
+];
+const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
 ---
 <Base section="">
   <section class="wrap hero">
     <div class="hero-main">
       <p class="eyebrow">Сейчас <span data-now></span> · подберём под ваш вечер</p>
-      <h1 class="sentence">Сегодня у меня <button class="slot" data-focus="g-time" id="s-time">{TIMES[0].word}</button>, хочется <button class="slot" data-focus="g-mood" id="s-mood">{MOODS[0].word}</button>. Смотрим <button class="slot" data-focus="g-kind" id="s-kind">{KINDS[0].word}</button></h1>
+      <h1 class="sentence">Сегодня у меня <span class="nw"><button class="slot" data-focus="g-time" id="s-time">{TIMES[0].word}</button>,</span> хочется <span class="nw"><button class="slot" data-focus="g-mood" id="s-mood">{MOODS[0].word}</button>.</span> Смотрим <button class="slot" data-focus="g-kind" id="s-kind">{KINDS[0].word}</button></h1>
+      <p class="lead">Скажите, сколько у вас времени и какое настроение. Подберём фильм или сериал и покажем, во сколько будет финал.</p>
       <div class="pickers">
         <div><p class="picker-l" id="l-time">Сколько есть времени</p>
           <div class="chips three" role="group" aria-labelledby="l-time" id="g-time">{TIMES.map((t) => <button class="chip" data-time={t.v} aria-pressed={String(t.v === DEF.time)} set:html={t.chip.replace(/^Около /, '<span class="m-hide">Около </span>')}></button>)}</div></div>
@@ -32,10 +59,11 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
         <div><p class="picker-l" id="l-kind">Что смотрим</p>
           <div class="chips three" role="group" aria-labelledby="l-kind" id="g-kind">{KINDS.map((k) => <button class="chip" data-kind={k.v} aria-pressed={String(k.v === DEF.kind)}>{k.chip}</button>)}</div></div>
       </div>
+      <p class="proof"><b>{num(films.length - nSeries)}</b> фильмов и <b>{num(nSeries)}</b> сериалов с рейтингом IMDb · база обновляется каждую неделю</p>
     </div>
     <div class="pick" id="pick-card">
       <a class="pick-a" id="pick-a" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
-        <span class="pick-p poster" style={`--h:${hue(tonight[0].id)}`} id="pick-poster" set:html={tonight[0].p ? `<img src="${tmdbImg(tonight[0].p, 200)}" alt="" onerror="this.remove()">` : ''}></span>
+        <span class="pick-p poster" style={`--h:${hue(tonight[0].id)}`} id="pick-poster" set:html={tonight[0].p ? `<img src="${tmdbImg(tonight[0].p, 200)}" alt="" onerror="knvImg(this)">` : ''}></span>
         <span class="pick-b">
           <small id="pick-l">Выбор на сегодня</small>
           <b id="pick-t">{tonight[0].t}</b>
@@ -45,14 +73,8 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
       </a>
       <div class="pick-f">
         <span class="pick-n" id="pick-n">Новый выбор — в полночь</span>
-        <button class="back" id="pick-back" type="button" hidden>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
-          <span>Выбор дня</span>
-        </button>
-        <button class="dice" id="dice" type="button" aria-label="Случайный выбор под ваш вечер">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>
-          <span id="dice-t">Не то? Случайный</span>
-        </button>
+        <button class="back" id="pick-back" type="button" hidden><Fragment set:html={icon('undo', 16)} /><span>Выбор дня</span></button>
+        <button class="dice" id="dice" type="button" aria-label="Случайный выбор под ваш вечер"><Fragment set:html={icon('dice', 18)} /><span id="dice-t">Не то? Случайный</span></button>
       </div>
     </div>
   </section>
@@ -67,7 +89,21 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
     <div class="grid row" id="tonight" set:html={curated.map((x, i) => cardHTML(x.f, base, i, WHY[x.why])).join('')}></div>
   </section>
 
-  <section class="sec band" aria-labelledby="h-colls">
+  <section class="sec wrap tagline reveal" aria-label="Коротко о сервисе">
+    <p class="tag-t">{TAGLINE.map((line) => <span class="tag-l">{line.split(' ').map((w) => <span class="w">{w} </span>)}</span>)}</p>
+  </section>
+
+  <section class="sec wrap reveal" aria-labelledby="h-how">
+    <div class="sec-h"><h2 id="h-how">Как это работает</h2></div>
+    <ol class="steps">
+      {STEPS.map(([t, d], i) => <li class="step"><span class="step-n">{String(i + 1).padStart(2, '0')}</span><h3>{t}</h3><p>{d}</p></li>)}
+    </ol>
+    <ul class="benefits">
+      {BENEFITS.map(([t, d]) => <li><b>{t}</b> — {d}</li>)}
+    </ul>
+  </section>
+
+  <section class="sec band reveal" aria-labelledby="h-colls">
     <div class="wrap">
       <div class="sec-h"><h2 id="h-colls">Подборки</h2><a class="more-link" href={`${base}podborki/`}>Все подборки →</a></div>
       <div class="colls">
@@ -91,53 +127,117 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
     </div>
     {Object.entries(popular).map(([k, l]) => <div class="grid row" data-pop={k} hidden={k !== 'all'} set:html={l.map((f, i) => cardHTML(f, base, i)).join('')}></div>)}
   </section>
+
+  <section class="sec wrap faq reveal" aria-labelledby="h-faq">
+    <div class="sec-h"><h2 id="h-faq">Вопросы и ответы</h2></div>
+    <div class="faq-l">
+      {FAQ.map(([q, a]) => <details><summary><span>{q}</span><Fragment set:html={icon('caret', 20)} /></summary><p>{a}</p></details>)}
+    </div>
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
+  </section>
+
+  <section class="sec wrap reveal" aria-labelledby="h-cta">
+    <div class="cta">
+      <h2 id="h-cta">Осталось выбрать, что смотреть</h2>
+      <p>Бесплатно, без регистрации и рекламы.</p>
+      <button class="btn" id="to-top" type="button">Подобрать фильм на вечер<Fragment set:html={icon('arrowUp', 18)} /></button>
+    </div>
+  </section>
 </Base>
 
 <style>
   .hero { display: flex; flex-wrap: wrap; gap: 40px 48px; align-items: flex-end; padding-top: 64px; padding-bottom: 24px; }
   .hero-main { flex: 999 1 640px; min-width: 0; }
-  .sentence { margin: 0; font-weight: 600; font-size: clamp(34px, 5.2vw, 60px); line-height: 1.14; letter-spacing: -.02em; max-width: 19ch; }
-  .slot { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; border-bottom: 3px solid var(--accent); cursor: pointer; line-height: 1.05; display: inline-block; transition: color .2s; }
+  .sentence { margin: 0; font-weight: 600; font-size: 60px; line-height: 1; letter-spacing: -.02em; max-width: 680px;
+    background: linear-gradient(90deg, #FFFFFF, #9B9B9B); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .nw { white-space: nowrap; }
+  .lead { margin: 24px 0 0; max-width: 680px; font-size: 18px; line-height: 28px; color: var(--muted); }
+  .proof { margin: 24px 0 0; font-size: 14px; line-height: 20px; color: var(--dim); }
+  .proof b { color: var(--text-2); font-weight: 600; }
+  .slot { font: inherit; color: var(--accent); -webkit-text-fill-color: var(--accent); background: none; border: 0; padding: 0; border-bottom: 3px solid var(--accent); cursor: pointer; line-height: 1.05; display: inline-block; transition: color 300ms var(--ease); }
   .slot:hover { color: var(--accent-hi); }
-  .slot.pop { animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
+  .slot.pop { animation: pop .45s var(--ease); }
   .pickers { display: grid; gap: 16px; margin-top: 32px; }
   .picker-l { margin: 0 0 8px; font-size: 14px; color: var(--dim); }
-  .pick { flex: 1 1 320px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 14px; transition: border-color .2s, transform .3s; }
+  .pick { flex: 1 1 320px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 16px; transition: border-color 300ms var(--ease), transform 500ms var(--ease); }
   .pick:hover { border-color: var(--line-2); transform: translateY(-3px); }
-  .pick-a { display: flex; gap: 18px; align-items: center; text-decoration: none; color: var(--text); }
+  .pick-a { display: flex; gap: 16px; align-items: center; text-decoration: none; color: var(--text); }
   .pick-a:hover { color: var(--text); }
   .pick-p { width: 96px; flex-shrink: 0; margin: 0; }
   .pick-b { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-  .pick-b small { font-size: 13px; color: var(--dim); }
+  .pick-b small { font-size: 12px; color: var(--dim); }
   .pick-b b { font-size: 20px; font-weight: 600; line-height: 1.25; }
   .pick-b > span { font-size: 14px; color: var(--muted); }
   .pick-b .pick-e { color: var(--accent); }
   .pick-f { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
   .pick-n { font-size: 12px; color: var(--dim); min-width: 0; }
-  .back { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color .2s, color .2s; }
+  .back { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px 0 12px; border-radius: 9999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color 300ms var(--ease), color 300ms var(--ease); }
   .back:hover { border-color: var(--line-2); color: var(--text); }
-  .back:hover svg { transform: rotate(-90deg); }
-  .back svg { transition: transform .35s cubic-bezier(.2, .9, .3, 1.2); }
+  .back:hover :global(svg) { transform: rotate(-90deg); }
+  .back :global(svg) { transition: transform 500ms var(--ease); }
   .back:active { transform: scale(.97); }
-  .dice { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color .2s, color .2s; }
+  .dice { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 9999px; border: 1px solid var(--line-2); background: transparent; color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color 300ms var(--ease), color 300ms var(--ease); }
   .dice:hover { border-color: var(--accent); color: var(--accent); }
   .dice:active { transform: scale(.97); }
-  .dice.roll svg { animation: tumble .6s cubic-bezier(.3, .7, .4, 1); }
+  .dice.roll :global(svg) { animation: tumble .6s var(--ease); }
   @keyframes tumble { 0% { transform: rotate(0) } 100% { transform: rotate(540deg) } }
   .pick.spin #pick-t { color: var(--dim); }
   .pick.spin #pick-m, .pick.spin #pick-e, .pick.spin .pick-p img { visibility: hidden; }
-  .pick.done .pick-a { animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
-  @keyframes pop { 0% { transform: scale(.85); opacity: .3; } 100% { transform: none; opacity: 1; } }
+  .pick.done .pick-a { animation: pop .45s var(--ease); }
+  @keyframes pop { 0% { transform: scale(.92); opacity: .3; } 100% { transform: none; opacity: 1; } }
+
+  /* слоган: слова приглушены и по одному проявляются при прокрутке */
+  .tagline { padding-top: 96px; padding-bottom: 96px; }
+  .tag-t { margin: 0; max-width: 880px; font-size: 48px; line-height: 1; font-weight: 600; letter-spacing: -.02em; text-wrap: balance; }
+  .tag-l { display: block; }
+  .tag-l + .tag-l { margin-top: 16px; }
+  .w { color: rgba(242, 238, 230, .3); transition: color 500ms var(--ease); }
+  .w.on { color: var(--text); }
+
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .step { padding: 24px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+  .step-n { font-size: 14px; line-height: 20px; font-weight: 600; color: var(--accent); }
+  .step h3 { margin: 12px 0 8px; font-size: 20px; line-height: 28px; font-weight: 600; }
+  .step p { margin: 0; font-size: 16px; line-height: 24px; color: var(--muted); }
+  .benefits { list-style: none; margin: 32px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 48px; }
+  .benefits li { font-size: 16px; line-height: 24px; color: var(--muted); }
+  .benefits b { color: var(--text); font-weight: 600; }
+
+  .faq-l { max-width: 880px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); }
+  .faq details + details { border-top: 1px solid var(--line); }
+  .faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px; cursor: pointer; list-style: none; font-size: 18px; line-height: 28px; font-weight: 600; transition: color 300ms var(--ease); }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary:hover { color: var(--accent); }
+  .faq summary:focus-visible { outline-offset: -2px; border-radius: 16px; }
+  .faq summary :global(svg) { flex-shrink: 0; color: var(--dim); transition: transform 500ms var(--ease); }
+  .faq details[open] summary :global(svg) { transform: rotate(180deg); }
+  .faq details p { margin: 0; padding: 0 24px 24px; max-width: 720px; font-size: 16px; line-height: 24px; color: var(--muted); }
+
+  .cta { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 64px 24px; border-radius: 24px; background: var(--surface); border: 1px solid var(--line); }
+  .cta h2 { margin: 0; font-size: 36px; line-height: 40px; font-weight: 600; }
+  .cta p { margin: 0; font-size: 18px; line-height: 28px; color: var(--muted); }
+  .cta .btn { margin-top: 8px; }
+  @media (max-width: 1100px) { .steps { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 760px) {
+    .sentence { font-size: 36px; line-height: 40px; }
+    .lead { margin-top: 16px; font-size: 16px; line-height: 24px; }
+    .proof { margin-top: 16px; font-size: 12px; line-height: 16px; }
+    .tagline { padding-top: 64px; padding-bottom: 64px; }
+    .tag-t { font-size: 36px; line-height: 40px; }
+    .benefits { grid-template-columns: minmax(0, 1fr); margin-top: 24px; }
+    .faq summary { padding: 16px; font-size: 16px; line-height: 24px; }
+    .faq details p { padding: 0 16px 16px; }
+    .cta { padding: 48px 16px; }
+    .cta h2 { font-size: 30px; line-height: 36px; }
     .hero { padding-top: 24px; gap: 24px; }
     .eyebrow { margin-bottom: 12px; }
-    .pickers { margin-top: 22px; gap: 12px; }
-    .picker-l { font-size: 13px; margin-bottom: 6px; }
-    .pick { padding: 14px; gap: 12px; border-radius: 16px; }
-    .pick-a { gap: 14px; }
-    .pick-f { padding-top: 10px; }
+    .pickers { margin-top: 24px; gap: 12px; }
+    .picker-l { font-size: 12px; margin-bottom: 8px; }
+    .pick { padding: 16px; gap: 12px; border-radius: 16px; }
+    .pick-a { gap: 16px; }
+    .pick-f { padding-top: 12px; }
     .pick-p { width: 64px; }
-    .pick-b b { font-size: 17px; }
+    .pick-b b { font-size: 16px; }
   }
 </style>
 
@@ -194,7 +294,7 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
     $('pick-t').textContent = f.t;
     $('pick-m').textContent = f.k ? `${kindName(f)} · ${seasons(f)} · серия ${dur(f.min)}` : `${f.y} · ${dur(f.min)} · IMDb ${f.imdb.toFixed(1)}`;
     $('pick-e').innerHTML = `Финал в <span data-end="${f.min}"></span>`;
-    $('pick-poster').innerHTML = f.p ? `<img src="${tmdbImg(f.p, 200)}" alt="" onerror="this.remove()">` : '';
+    $('pick-poster').innerHTML = f.p ? `<img src="${tmdbImg(f.p, 200)}" alt="" onerror="knvImg(this)">` : '';
     $('pick-poster').style.setProperty('--h', String(hue(f.id)));
     $('pick-n').hidden = rnd;
     $('pick-back').hidden = !rnd;
@@ -267,6 +367,28 @@ const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 10000
     });
   }
   dedupe(new Set([...document.querySelectorAll<HTMLElement>('#tonight .card')].map((c) => c.dataset.id!)));
+
+  // разделы поднимаются и проявляются один раз, когда доходят до экрана
+  const seen = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add('in'); seen.unobserve(e.target); }
+  }), { rootMargin: '0px 0px -10% 0px' });
+  document.querySelectorAll('.reveal').forEach((el) => seen.observe(el));
+
+  // слоган: слово загорается, когда пересекает линию на высоте 60% экрана; слова одной строки — по очереди
+  const words = new IntersectionObserver((es) => {
+    es.filter((e) => e.isIntersecting).forEach((e, i) => {
+      (e.target as HTMLElement).style.transitionDelay = i * 60 + 'ms';
+      e.target.classList.add('on');
+      words.unobserve(e.target);
+    });
+  }, { rootMargin: '0px 0px -40% 0px' });
+  document.querySelectorAll('.tag-t .w').forEach((w) => words.observe(w));
+
+  $('to-top').addEventListener('click', () => {
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
+    ($('g-time').querySelector('[aria-pressed="true"]') as HTMLElement)?.focus({ preventScroll: true });
+  });
 
   label();
   update();

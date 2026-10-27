@@ -19,7 +19,7 @@ const yrs = roles.map((r) => r.f.y);
     <div class="wrap">
       <nav class="crumbs" aria-label="Навигация"><a href={base}>Главная</a> / <a href={`${base}aktery/`}>Актёры</a></nav>
       <div class="a-row">
-        <span class="face">{a.p && <img src={tmdbImg(a.p, 400, 'w500')} alt={a.n} onerror="this.remove()" />}<b>{initials(a.n)}</b></span>
+        <span class="face">{a.p && <img src={tmdbImg(a.p, 400, 'w500')} alt={a.n} onerror="knvImg(this)" />}<b>{initials(a.n)}</b></span>
         <div>
           <h1>{a.n}</h1>
           <p>{films.length ? `${films.length} ${plural(films.length, 'фильм', 'фильма', 'фильмов')}` : ''}{films.length && series.length ? ' и ' : ''}{series.length ? `${series.length} ${plural(series.length, 'сериал', 'сериала', 'сериалов')}` : ''} в базе · {Math.min(...yrs)}–{Math.max(...yrs)}</p>

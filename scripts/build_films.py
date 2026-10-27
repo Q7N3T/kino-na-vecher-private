@@ -252,6 +252,20 @@ def tmdb(films):
                 res = j.get("movie_results") or j.get("tv_results") or []
                 m = res[0] if res else {}
                 v = {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview"), "pop": m.get("popularity")}
+                sea = (j.get("tv_season_results") or [{}])[0]
+                if not m and sea.get("show_id"):
+                    # на IMDb отдельный сериал, а в TMDB — сезон другого («Чёрная гадюка 2», «Твин Пикс» 2017):
+                    # берём постер, описание, состав и кинотеатры сезона, без постера сезона — постер шоу
+                    path = f"https://api.themoviedb.org/3/tv/{sea['show_id']}/season/{sea.get('season_number', 1)}"
+                    det = api(path, {"language": "ru-RU", "append_to_response": "aggregate_credits,watch/providers"}) or {}
+                    show = {} if det.get("poster_path") or sea.get("poster_path") else api(f"https://api.themoviedb.org/3/tv/{sea['show_id']}", {"language": "ru-RU"}) or {}
+                    v = {"p": det.get("poster_path") or sea.get("poster_path") or show.get("poster_path"), "ov": det.get("overview") or sea.get("overview")}
+                    cast = det.get("aggregate_credits") or {}
+                    v["cr"] = [[c.get("name"), (c.get("roles") or [{}])[0].get("character"), c.get("profile_path")] for c in (cast.get("cast") or [])[:CAST]]
+                    wp = watch_providers(det)
+                    if wp: v["wp"] = wp
+                    v["cv"] = CAST_VER
+                    return tid, v
                 if m.get("id"):
                     tv = bool(j.get("tv_results")) and not j.get("movie_results")
                     # подробности одним запросом: состав с фото, где посмотреть, а у сериала ещё статус
@@ -281,7 +295,7 @@ def tmdb(films):
     # раз в неделю спрашиваем заново всё: популярность меняется каждый день, у сериалов — статус,
     # TMDB дополняет постеры и описания; в пределах недели повторный запуск берёт ответы из кеша
     week = time.strftime("%Y-%W")
-    todo = [t for t in films if t not in cache or cache[t].get("cv") != CAST_VER or cache[t].get("tsd") != week]
+    todo = [t for t in films if t not in cache or not cache[t].get("p") or cache[t].get("cv") != CAST_VER or cache[t].get("tsd") != week]  # без постера — спрашиваем при каждом запуске
     print(f"TMDB: {len(todo):,} запросов (в кеше {len(cache):,})", file=sys.stderr)
     with cf.ThreadPoolExecutor(8) as ex:
         for i, (tid, v) in enumerate(ex.map(get, todo), 1):

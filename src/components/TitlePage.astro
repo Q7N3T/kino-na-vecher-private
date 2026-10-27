@@ -29,7 +29,7 @@ const jsonld = {
       <nav class="crumbs" aria-label="Навигация"><a href={base}>Главная</a> / <a href={base + section}>{f.k ? 'Сериалы' : 'Фильмы'}</a> / <span>{f.t}</span></nav>
       <div class="t-row">
         <div class="poster t-poster">
-          {f.p && <img src={tmdbImg(f.p, 500)} alt={`Постер: «${f.t}»`} onerror="this.remove()" />}
+          {f.p && <img src={tmdbImg(f.p, 500)} alt={`Постер: «${f.t}»`} onerror="knvImg(this)" />}
           <span class="ph">{f.t}</span>
         </div>
         <div class="t-info">
@@ -72,7 +72,7 @@ const jsonld = {
                   <ul>
                     {g.items.map(([, name, logo]) => (
                       <li><a href={f.wp.l} rel="noopener sponsored" target="_blank">
-                        {logo && <img src={tmdbImg(logo, 64, 'w92')} alt="" width="28" height="28" loading="lazy" onerror="this.remove()" />}
+                        {logo && <img src={tmdbImg(logo, 64, 'w92')} alt="" width="28" height="28" loading="lazy" onerror="knvImg(this)" />}
                         <span>{name}</span>
                       </a></li>
                     ))}
@@ -96,7 +96,7 @@ const jsonld = {
           <ul class="cast">
             {f.crew.map((c) => {
               const inner = <>
-                <span class="face" style={`--h:${hue(c.n)}`}>{c.p && <img src={tmdbImg(c.p, 160, 'w185')} alt="" loading="lazy" onerror="this.remove()" />}<b>{initials(c.n)}</b></span>
+                <span class="face" style={`--h:${hue(c.n)}`}>{c.p && <img src={tmdbImg(c.p, 160, 'w185')} alt="" loading="lazy" onerror="knvImg(this)" />}<b>{initials(c.n)}</b></span>
                 <span class="who"><span>{c.n}</span>{c.r && <small>{c.r}</small>}</span>
               </>;
               return <li>{c.slug ? <a href={`${base}akter/${c.slug}/`}>{inner}</a> : <div>{inner}</div>}</li>;
