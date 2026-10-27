@@ -87,7 +87,7 @@ const CONTACT = ''; // почта для сотрудничества, напр�
     <form class="search" action={`${base}poisk/`} method="get" role="search">
       <Fragment set:html={icon('search', 18)} />
       <label class="sr" for="q-top">Поиск</label>
-      <input id="q-top" name="q" type="search" placeholder="Фильм, сериал или актёр" autocomplete="off">
+      <input id="q-top" name="q" type="search" placeholder="Фильм, сериал, актёр" autocomplete="off">
     </form>
     <a class="top-search" href={`${base}poisk/`} aria-label="Поиск" set:html={icon('search', 22)}></a>
   </div>

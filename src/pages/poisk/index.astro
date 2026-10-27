@@ -9,7 +9,12 @@ import Base from '../../layouts/Base.astro';
       <input id="q" name="q" type="search" placeholder="Название, актёр или режиссёр" autocomplete="off" autofocus>
     </form>
     <p class="hint" id="hint" aria-live="polite"></p>
-    <section id="people-s" hidden><h2 class="h">Актёры</h2><ul class="people" id="people"></ul></section>
+    <section id="spot-s" class="spot" hidden aria-live="polite">
+      <div class="spot-c" id="spot-c"></div>
+      <h2 class="h" id="spot-h"></h2>
+      <div class="grid row" id="spot-grid"></div>
+    </section>
+    <section id="people-s" hidden><h2 class="h" id="people-h">Актёры</h2><ul class="people" id="people"></ul></section>
     <section id="titles-s" hidden><h2 class="h">Фильмы и сериалы</h2><div class="grid" id="grid"></div><div class="load"><button class="btn ghost" id="more" hidden>Показать ещё</button><small id="left"></small></div></section>
   </div>
 </Base>
@@ -30,23 +35,58 @@ import Base from '../../layouts/Base.astro';
   .people :global(.nm span) { font-size: 16px; line-height: 24px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color 300ms var(--ease); }
   .people :global(a:hover .nm span) { color: var(--accent); }
   .people :global(.nm small) { font-size: 12px; line-height: 16px; color: var(--dim); }
+
+  /* карточка актёра */
+  .spot { margin-bottom: 48px; }
+  .spot .h :global(small) { margin-left: 8px; font-size: 14px; font-weight: 400; color: var(--dim); }
+  .spot.in .spot-c { animation: spot-in 700ms var(--ease) both; }
+  .spot-c { display: flex; align-items: center; gap: 24px; padding: 24px; margin-bottom: 32px; border-radius: 24px; background: var(--surface); border: 1px solid var(--line); }
+  .spot-c :global(.spot-av) { position: relative; flex-shrink: 0; width: 112px; height: 112px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; text-decoration: none;
+    background: hsl(var(--h) 26% 22%); box-shadow: 0 0 0 4px var(--surface), 0 0 0 6px var(--accent); transition: transform 500ms var(--ease); }
+  .spot-c :global(.spot-av:hover) { transform: scale(1.04); }
+  .spot-c :global(.spot-av b) { font-size: 30px; font-weight: 600; color: hsl(var(--h) 40% 86%); }
+  .spot-c :global(.spot-av img) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .spot-c :global(.spot-i) { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+  .spot-c :global(.spot-i small) { font-size: 14px; line-height: 20px; color: var(--dim); }
+  .spot-c :global(.spot-n) { font-size: 36px; line-height: 40px; font-weight: 600; letter-spacing: -.02em; color: var(--text); text-decoration: none; transition: color 300ms var(--ease); }
+  .spot-c :global(.spot-n:hover) { color: var(--accent); }
+  .spot-c :global(.spot-b) { font-size: 16px; line-height: 24px; color: var(--muted); }
+  .spot-c :global(.spot-b a) { color: var(--text); text-decoration: none; font-weight: 600; transition: color 300ms var(--ease); }
+  .spot-c :global(.spot-b a:hover) { color: var(--accent); }
+  .spot-c :global(.spot-all svg) { transition: transform 500ms var(--ease); }
+  .spot-c :global(.spot-all:hover svg) { transform: translateX(4px); }
+  @keyframes spot-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 760px) {
+    .spot-c { flex-wrap: wrap; gap: 16px; padding: 16px; }
+    .spot-c :global(.spot-av) { width: 80px; height: 80px; }
+    .spot-c :global(.spot-n) { font-size: 24px; line-height: 32px; }
+    .spot-c :global(.spot-i) { flex-basis: calc(100% - 96px); }
+    .spot-c :global(.spot-all) { width: 100%; }
+  }
 </style>
 <script>
   import { loadIndex, norm, translit, pager, base, SORTS } from '../../lib/client.js';
-  import { tmdbImg, esc, initials, plural, hue } from '../../lib/format.js';
+  import { tmdbImg, esc, initials, plural, hue, cardHTML } from '../../lib/format.js';
   const input = document.getElementById('q') as HTMLInputElement;
-  let actors: [string, string, string][] | null = null;
+  let actors: [string, string, string, number[], number][] | null = null;
   async function run() {
     const raw = input.value.trim();
     const q = norm(raw), ql = translit(q);
     history.replaceState(null, '', location.pathname + (raw ? '?q=' + encodeURIComponent(raw) : ''));
     const hint = document.getElementById('hint')!;
-    if (q.length < 2) { hint.textContent = 'Введите хотя бы две буквы.'; document.getElementById('titles-s')!.hidden = document.getElementById('people-s')!.hidden = true; return; }
+    if (q.length < 2) { hint.textContent = 'Введите хотя бы две буквы.'; document.getElementById('titles-s')!.hidden = document.getElementById('people-s')!.hidden = document.getElementById('spot-s')!.hidden = true; return; }
     const [all, ppl] = await Promise.all([loadIndex(), actors || fetch(`${base}aktery.json`).then((r) => r.json()).then((a) => (actors = a))]);
     const has = (s: string) => { s = norm(s); return s.includes(q) || s.includes(ql); };
     const list = all.filter((f: any) => norm(f.t).includes(q) || has(f.o) || (f.d || []).some(has)).sort(SORTS.pop);
-    const people = ppl.filter(([n]) => has(n)).slice(0, 12);
-    hint.textContent = list.length || people.length ? `Нашлось: ${list.length} ${plural(list.length, 'тайтл', 'тайтла', 'тайтлов')}, ${people.length} ${plural(people.length, 'актёр', 'актёра', 'актёров')}` : 'Ничего не нашлось. В базе фильмы и сериалы, у которых на IMDb больше 10 тысяч оценок.';
+    const found = ppl.filter(([n]) => has(n));
+    // запрос похож на одного актёра — его карточка сверху и его фильмы, по популярности
+    const star = found.find(([n]) => norm(n) === q || norm(n) === ql) || (found.length <= 2 || (/\s/.test(q) && norm(found[0]?.[0] || '').startsWith(q)) ? found[0] : null);
+    spotlight(star, all);
+    const people = found.filter((a) => a !== star).slice(0, 12);
+    document.getElementById('people-h')!.textContent = star ? 'Ещё актёры' : 'Актёры';
+    const np = people.length + (star ? 1 : 0);
+    const parts = [np && `${np} ${plural(np, 'актёр', 'актёра', 'актёров')}`, list.length && `${list.length} ${plural(list.length, 'тайтл', 'тайтла', 'тайтлов')} по названию`].filter(Boolean);
+    hint.textContent = parts.length ? 'Нашлось: ' + parts.join(', ') : 'Ничего не нашлось. В базе фильмы и сериалы, у которых на IMDb больше 10 тысяч оценок.';
     document.getElementById('people-s')!.hidden = !people.length;
     document.getElementById('people')!.innerHTML = people.map(([n, slug, p]) => `<li><a href="${base}akter/${slug}/">
       <span class="av" style="--h:${hue(n)}"><b>${esc(initials(n))}</b>${p ? `<img src="${tmdbImg(p, 96, 'w185')}" alt="" loading="lazy" onerror="knvImg(this)">` : ''}</span>
@@ -54,6 +94,33 @@ import Base from '../../layouts/Base.astro';
     document.getElementById('titles-s')!.hidden = !list.length;
     if (list.length) pager(document.getElementById('grid')!, document.getElementById('more')!, document.getElementById('left'), list);
   }
+  // карточка актёра: фото, сколько тайтлов в базе, годы, лучший по IMDb — и лента его фильмов
+  let byNum: Map<number, any> | null = null, spotFor = '';
+  function spotlight(star: any, all: any[]) {
+    const sec = document.getElementById('spot-s')!;
+    if (!star) { sec.hidden = true; spotFor = ''; return; }
+    const [n, slug, p, ids, total] = star;
+    if (spotFor === slug) return; // тот же актёр — не перерисовываем, чтобы не мигало при наборе
+    spotFor = slug;
+    byNum ||= new Map(all.map((f) => [+f.id.slice(2), f]));
+    const films = (ids || []).map((i: number) => byNum!.get(i)).filter(Boolean);
+    const ys = films.map((f: any) => f.y);
+    const best = films.filter((f: any) => f.v >= 20000).sort((a: any, b: any) => b.imdb - a.imdb)[0];
+    const url = `${base}akter/${slug}/`;
+    document.getElementById('spot-c')!.innerHTML = `
+      <a class="spot-av" href="${url}" style="--h:${hue(n)}"><b>${esc(initials(n))}</b>${p ? `<img src="${tmdbImg(p, 240, 'w342')}" alt="" onerror="knvImg(this)">` : ''}</a>
+      <div class="spot-i">
+        <small>В базе ${total} ${plural(total, 'фильм или сериал', 'фильма и сериала', 'фильмов и сериалов')}${ys.length ? ` · ${Math.min(...ys)}–${Math.max(...ys)}` : ''}</small>
+        <a class="spot-n" href="${url}">${esc(n)}</a>
+        ${best ? `<span class="spot-b">Лучший по IMDb: <a href="${base}${best.k ? 'serial' : 'film'}/${best.slug}/">${esc(best.t)}</a> · ${best.imdb.toFixed(1)}</span>` : ''}
+      </div>
+      <a class="btn ghost spot-all" href="${url}">Вся фильмография<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></svg></a>`;
+    document.getElementById('spot-h')!.innerHTML = 'Фильмография <small>по популярности</small>';
+    document.getElementById('spot-grid')!.innerHTML = films.slice(0, 12).map((f: any, i: number) => cardHTML(f, base, i)).join('');
+    sec.hidden = false;
+    sec.classList.remove('in'); void sec.offsetWidth; sec.classList.add('in');
+  }
+
   input.value = new URLSearchParams(location.search).get('q') || '';
   let t: number;
   input.addEventListener('input', () => { clearTimeout(t); t = window.setTimeout(run, 180); });

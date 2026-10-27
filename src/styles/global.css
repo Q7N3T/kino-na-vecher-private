@@ -57,6 +57,9 @@ p, li, dd { text-wrap: pretty; }
 .search input { background: transparent; border: 0; outline: 0; font-size: 14px; flex: 1; min-width: 0; text-overflow: ellipsis; }
 /* не поместилась подсказка — многоточие, а не обрубленное слово */
 .search input::placeholder { text-overflow: ellipsis; white-space: nowrap; }
+/* Safari рисует поле поиска по-своему и добавляет внутренние отступы — убираем, место нужно тексту */
+.search input[type="search"] { -webkit-appearance: none; appearance: none; padding: 0; }
+.search input::-webkit-search-decoration { -webkit-appearance: none; }
 .search input::placeholder { color: var(--dim); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; min-height: 40px; font-size: 16px; line-height: 24px; border-radius: 12px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; transition: filter 300ms var(--ease), transform 500ms var(--ease); }
 .btn:hover { color: var(--accent-ink); filter: brightness(1.08); }
