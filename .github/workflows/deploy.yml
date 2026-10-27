@@ -38,6 +38,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Тесты  # сломанное не выкладываем
+        run: npm test
+
       - name: Собрать сайт
         run: npm run build
         env:

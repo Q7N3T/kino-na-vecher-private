@@ -65,6 +65,7 @@ This product uses the TMDB API but is not endorsed or certified by TMDB.
 npm install
 npm run build     # собрать в dist/
 npm run preview   # посмотреть локально
+npm test          # тесты: подбор, форматирование, сборщик базы (Node и Python, без зависимостей)
 ```
 
 Постеры и фото TMDB идут через прокси `wsrv.nl`: `image.tmdb.org` открывается не везде, в том числе в России.
