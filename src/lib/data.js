@@ -15,6 +15,19 @@ export function slugify(s) {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
 }
 
+// Актёр в поиске: в ленту — до 24 самых популярных тайтлов (номер IMDb без «tt»),
+// а годы и лучший по IMDb (от 20 тыс. оценок) — по всей фильмографии
+export function actorSearchRow(a) {
+  const fs = a.roles.map((r) => r.f);
+  const ys = fs.map((f) => f.y);
+  const best = fs.filter((f) => f.v >= 20000).sort((x, y) => y.imdb - x.imdb)[0];
+  return {
+    n: a.n, slug: a.slug, p: a.p,
+    ids: [...fs].sort((x, y) => y.pp - x.pp).slice(0, 24).map((f) => +f.id.slice(2)),
+    total: fs.length, y0: Math.min(...ys), y1: Math.max(...ys), best: best ? +best.id.slice(2) : 0,
+  };
+}
+
 let cache;
 
 export function load() {

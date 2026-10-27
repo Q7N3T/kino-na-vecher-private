@@ -68,19 +68,22 @@ import Base from '../../layouts/Base.astro';
   import { loadIndex, norm, translit, pager, base, SORTS } from '../../lib/client.js';
   import { tmdbImg, esc, initials, plural, hue, cardHTML } from '../../lib/format.js';
   const input = document.getElementById('q') as HTMLInputElement;
-  let actors: [string, string, string, number[], number][] | null = null;
+  // строка актёра из aktery.json (порядок полей — как в src/pages/aktery.json.js); разбираем один раз, при загрузке
+  type Actor = { n: string; slug: string; p: string; ids: number[]; total: number; y0: number; y1: number; best: number };
+  const toActor = ([n, slug, p, ids, total, y0, y1, best]: any[]): Actor => ({ n, slug, p, ids, total, y0, y1, best });
+  let actors: Actor[] | null = null;
   async function run() {
     const raw = input.value.trim();
     const q = norm(raw), ql = translit(q);
     history.replaceState(null, '', location.pathname + (raw ? '?q=' + encodeURIComponent(raw) : ''));
     const hint = document.getElementById('hint')!;
     if (q.length < 2) { hint.textContent = 'Введите хотя бы две буквы.'; document.getElementById('titles-s')!.hidden = document.getElementById('people-s')!.hidden = document.getElementById('spot-s')!.hidden = true; return; }
-    const [all, ppl] = await Promise.all([loadIndex(), actors || fetch(`${base}aktery.json`).then((r) => r.json()).then((a) => (actors = a))]);
+    const [all, ppl] = await Promise.all([loadIndex(), actors || fetch(`${base}aktery.json`).then((r) => r.json()).then((rows) => (actors = rows.map(toActor)))]);
     const has = (s: string) => { s = norm(s); return s.includes(q) || s.includes(ql); };
     const list = all.filter((f: any) => norm(f.t).includes(q) || has(f.o) || (f.d || []).some(has)).sort(SORTS.pop);
-    const found = ppl.filter(([n]) => has(n));
+    const found = ppl.filter((a) => has(a.n));
     // запрос похож на одного актёра — его карточка сверху и его фильмы, по популярности
-    const star = found.find(([n]) => norm(n) === q || norm(n) === ql) || (found.length <= 2 || (/\s/.test(q) && norm(found[0]?.[0] || '').startsWith(q)) ? found[0] : null);
+    const star = found.find((a) => norm(a.n) === q || norm(a.n) === ql) || (found.length <= 2 || (/\s/.test(q) && norm(found[0]?.n || '').startsWith(q)) ? found[0] : null);
     spotlight(star, all);
     const people = found.filter((a) => a !== star).slice(0, 12);
     document.getElementById('people-h')!.textContent = star ? 'Ещё актёры' : 'Актёры';
@@ -88,7 +91,7 @@ import Base from '../../layouts/Base.astro';
     const parts = [np && `${np} ${plural(np, 'актёр', 'актёра', 'актёров')}`, list.length && `${list.length} ${plural(list.length, 'тайтл', 'тайтла', 'тайтлов')} по названию`].filter(Boolean);
     hint.textContent = parts.length ? 'Нашлось: ' + parts.join(', ') : 'Ничего не нашлось. В базе фильмы и сериалы, у которых на IMDb больше 10 тысяч оценок.';
     document.getElementById('people-s')!.hidden = !people.length;
-    document.getElementById('people')!.innerHTML = people.map(([n, slug, p]) => `<li><a href="${base}akter/${slug}/">
+    document.getElementById('people')!.innerHTML = people.map(({ n, slug, p }) => `<li><a href="${base}akter/${slug}/">
       <span class="av" style="--h:${hue(n)}"><b>${esc(initials(n))}</b>${p ? `<img src="${tmdbImg(p, 96, 'w185')}" alt="" loading="lazy" onerror="knvImg(this)">` : ''}</span>
       <span class="nm"><span>${esc(n)}</span><small>Фильмография</small></span></a></li>`).join('');
     document.getElementById('titles-s')!.hidden = !list.length;
@@ -96,21 +99,20 @@ import Base from '../../layouts/Base.astro';
   }
   // карточка актёра: фото, сколько тайтлов в базе, годы, лучший по IMDb — и лента его фильмов
   let byNum: Map<number, any> | null = null, spotFor = '';
-  function spotlight(star: any, all: any[]) {
+  function spotlight(star: Actor | null | undefined, all: any[]) {
     const sec = document.getElementById('spot-s')!;
     if (!star) { sec.hidden = true; spotFor = ''; return; }
-    const [n, slug, p, ids, total] = star;
+    const { n, slug, p, ids, total, y0, y1 } = star;
     if (spotFor === slug) return; // тот же актёр — не перерисовываем, чтобы не мигало при наборе
     spotFor = slug;
     byNum ||= new Map(all.map((f) => [+f.id.slice(2), f]));
-    const films = (ids || []).map((i: number) => byNum!.get(i)).filter(Boolean);
-    const ys = films.map((f: any) => f.y);
-    const best = films.filter((f: any) => f.v >= 20000).sort((a: any, b: any) => b.imdb - a.imdb)[0];
+    const films = ids.map((i) => byNum!.get(i)).filter(Boolean);
+    const best = byNum.get(star.best); // годы и лучший посчитаны при сборке по всей фильмографии
     const url = `${base}akter/${slug}/`;
     document.getElementById('spot-c')!.innerHTML = `
       <a class="spot-av" href="${url}" style="--h:${hue(n)}"><b>${esc(initials(n))}</b>${p ? `<img src="${tmdbImg(p, 240, 'w342')}" alt="" onerror="knvImg(this)">` : ''}</a>
       <div class="spot-i">
-        <small>В базе ${total} ${plural(total, 'фильм или сериал', 'фильма и сериала', 'фильмов и сериалов')}${ys.length ? ` · ${Math.min(...ys)}–${Math.max(...ys)}` : ''}</small>
+        <small>В базе ${total} ${plural(total, 'фильм или сериал', 'фильма и сериала', 'фильмов и сериалов')}${y0 === y1 ? ` · ${y0}` : ` · ${y0}–${y1}`}</small>
         <a class="spot-n" href="${url}">${esc(n)}</a>
         ${best ? `<span class="spot-b">Лучший по IMDb: <a href="${base}${best.k ? 'serial' : 'film'}/${best.slug}/">${esc(best.t)}</a> · ${best.imdb.toFixed(1)}</span>` : ''}
       </div>
