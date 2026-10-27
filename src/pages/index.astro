@@ -131,7 +131,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
   <section class="sec wrap faq reveal" aria-labelledby="h-faq">
     <div class="sec-h"><h2 id="h-faq">Вопросы и ответы</h2></div>
     <div class="faq-l">
-      {FAQ.map(([q, a]) => <details><summary><span>{q}</span><Fragment set:html={icon('caret', 20)} /></summary><p>{a}</p></details>)}
+      {FAQ.map(([q, a], i) => <details style={`--i:${i}`}><summary><span>{q}</span><Fragment set:html={icon('caret', 20)} /></summary><p>{a}</p></details>)}
     </div>
     <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
   </section>
@@ -203,20 +203,37 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
   .benefits li { font-size: 16px; line-height: 24px; color: var(--muted); }
   .benefits b { color: var(--text); font-weight: 600; }
 
-  .faq-l { max-width: 880px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); }
+  .faq-l { max-width: 880px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); overflow: hidden; }
   .faq details + details { border-top: 1px solid var(--line); }
-  .faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px; cursor: pointer; list-style: none; font-size: 18px; line-height: 28px; font-weight: 600; transition: color 300ms var(--ease); }
+  .faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px; cursor: pointer; list-style: none; font-size: 18px; line-height: 28px; font-weight: 600; transition: color 300ms var(--ease), background 300ms var(--ease); }
   .faq summary::-webkit-details-marker { display: none; }
-  .faq summary:hover { color: var(--accent); }
+  .faq summary > span { transition: transform 500ms var(--ease); }
+  .faq summary:hover { background: var(--surface-2); }
+  .faq summary:hover > span { transform: translateX(4px); }
+  .faq summary:active > span { transform: translateX(4px) translateY(1px); }
+  .faq details[open] summary { color: var(--accent); }
   .faq summary:focus-visible { outline-offset: -2px; border-radius: 16px; }
-  .faq summary :global(svg) { flex-shrink: 0; color: var(--dim); transition: transform 500ms var(--ease); }
-  .faq details[open] summary :global(svg) { transform: rotate(180deg); }
+  .faq summary :global(svg) { flex-shrink: 0; color: var(--dim); transition: transform 500ms var(--ease), color 300ms var(--ease); }
+  .faq summary:hover :global(svg) { color: var(--text); }
+  .faq details[open] summary :global(svg) { transform: rotate(180deg); color: var(--accent); }
   .faq details p { margin: 0; padding: 0 24px 24px; max-width: 720px; font-size: 16px; line-height: 24px; color: var(--muted); }
+  /* ответ выезжает и проявляется; при закрытии — уходит обратно, потом details закрывается */
+  .faq details[open] p { animation: faq-in 500ms var(--ease) both; }
+  .faq details.closing p { animation: faq-out 300ms var(--ease) both; }
+  @keyframes faq-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+  @keyframes faq-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-8px); } }
+  /* вопросы появляются по очереди, когда раздел доходит до экрана: шаг 50 мс, вся цепочка не дольше 400 мс */
+  .faq details { opacity: 0; transform: translateY(24px); transition: opacity 500ms var(--ease), transform 500ms var(--ease); transition-delay: calc(var(--i) * 50ms); }
+  .faq.in details, :global(html:not(.js)) .faq details { opacity: 1; transform: none; }
 
   .cta { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 64px 24px; border-radius: 24px; background: var(--surface); border: 1px solid var(--line); }
   .cta h2 { margin: 0; font-size: 36px; line-height: 40px; font-weight: 600; }
   .cta p { margin: 0; font-size: 18px; line-height: 28px; color: var(--muted); }
-  .cta .btn { margin-top: 8px; }
+  .cta .btn { margin-top: 8px; transition: filter 300ms var(--ease), transform 500ms var(--ease), box-shadow 500ms var(--ease); }
+  .cta .btn:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -16px rgba(242, 181, 68, .6); }
+  .cta .btn:active { transform: scale(.98); }
+  .cta .btn :global(svg) { transition: transform 500ms var(--ease); }
+  .cta .btn:hover :global(svg) { transform: translateY(-4px); }
   @media (max-width: 1100px) { .steps { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 760px) {
     .sentence { font-size: 36px; line-height: 40px; }
@@ -383,6 +400,16 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     });
   }, { rootMargin: '0px 0px -40% 0px' });
   document.querySelectorAll('.tag-t .w').forEach((w) => words.observe(w));
+
+  // закрытие вопроса: сначала ответ уходит, потом details закрывается
+  document.querySelectorAll<HTMLDetailsElement>('.faq details').forEach((d) => {
+    d.querySelector('summary')!.addEventListener('click', (e) => {
+      if (!d.open || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      e.preventDefault();
+      d.classList.add('closing');
+      setTimeout(() => { d.open = false; d.classList.remove('closing'); }, 300);
+    });
+  });
 
   $('to-top').addEventListener('click', () => {
     const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;

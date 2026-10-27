@@ -241,6 +241,31 @@ def tmdb(films):
                 time.sleep(2 ** attempt)
         return None
 
+    norm = lambda x: re.sub(r"[^0-9a-zа-яё]+", " ", (x or "").lower()).strip()
+
+    def by_title(tid):
+        """TMDB не знает номер IMDb: ищем по оригинальному названию и году.
+        «Blackadder II» и «Twin Peaks» 2017 в TMDB — сезоны шоу: тогда берём постер сезона того же года."""
+        f = films[tid]
+        o, y, tv = norm(f.get("o") or f["t"]), f["y"], bool(f.get("k"))
+        res = (api(f"https://api.themoviedb.org/3/search/{'tv' if tv else 'movie'}",
+                   {"query": f.get("o") or f["t"], "language": "ru-RU"}) or {}).get("results") or []
+        year = lambda r: int((r.get("first_air_date") or r.get("release_date") or "0")[:4] or 0)
+        names = lambda r: {norm(r.get("name") or r.get("title")), norm(r.get("original_name") or r.get("original_title"))}
+        exact = [r for r in res[:8] if o in names(r)]
+        prefix = [r for r in res[:8] if any(n and o.startswith(n + " ") for n in names(r))] if tv else []
+        if not tv:
+            m = next((r for r in exact if abs(year(r) - y) <= 1), None)
+            return m and {"p": m.get("poster_path"), "ov": m.get("overview")}
+        m = next((r for r in exact if abs(year(r) - y) <= 1), None)
+        if m: return {"p": m.get("poster_path"), "ov": m.get("overview")}
+        m = (exact or prefix or [None])[0]
+        if not m: return None
+        det = api(f"https://api.themoviedb.org/3/tv/{m['id']}", {"language": "ru-RU"}) or {}
+        sea = next((x for x in det.get("seasons") or [] if x.get("season_number") and (x.get("air_date") or "")[:4] == str(y)), None)
+        if sea: return {"p": sea.get("poster_path") or m.get("poster_path"), "ov": sea.get("overview") or m.get("overview")}
+        return {"p": m.get("poster_path"), "ov": m.get("overview")}
+
     def get(tid):
         q = {"external_source": "imdb_id", "language": "ru-RU"}
         if not auth: q["api_key"] = key
@@ -266,6 +291,12 @@ def tmdb(films):
                     if wp: v["wp"] = wp
                     v["cv"] = CAST_VER
                     return tid, v
+                if not m:
+                    found = {k: len(x) for k, x in j.items() if isinstance(x, list) and x}
+                    alt = by_title(tid)
+                    print(f"  TMDB не знает {tid} «{films[tid].get('o') or films[tid]['t']}» ({found or 'пусто'}); "
+                          f"по названию: {'постер найден' if alt and alt.get('p') else 'нет'}", file=sys.stderr)
+                    if alt: v.update({k: x for k, x in alt.items() if x})
                 if m.get("id"):
                     tv = bool(j.get("tv_results")) and not j.get("movie_results")
                     # подробности одним запросом: состав с фото, где посмотреть, а у сериала ещё статус
