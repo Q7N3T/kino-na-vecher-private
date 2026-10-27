@@ -18,14 +18,22 @@ import Base from '../../layouts/Base.astro';
   .big input { font-size: 18px; }
   .hint { color: var(--dim); margin: 14px 0 28px; }
   .h { font-size: 20px; font-weight: 600; margin: 8px 0 18px; }
-  .people { list-style: none; margin: 0 0 40px; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; }
-  .people a { display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: var(--text); }
-  .people a:hover { border-color: var(--accent); }
-  .people img, .people b { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--surface-2); font-size: 14px; }
+  /* карточки актёров рисует скрипт — стили через :global, иначе Astro их не применит */
+  .people { list-style: none; margin: 0 0 40px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .people :global(a) { display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 8px; border-radius: 9999px; background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: var(--text); transition: border-color 300ms var(--ease), background 300ms var(--ease), transform 500ms var(--ease); }
+  .people :global(a:hover) { color: var(--text); border-color: var(--accent); background: var(--surface-2); transform: translateY(-2px); }
+  .people :global(a:active) { transform: scale(.98); }
+  .people :global(.av) { position: relative; flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: hsl(var(--h) 26% 22%); }
+  .people :global(.av b) { font-size: 14px; font-weight: 600; color: hsl(var(--h) 40% 86%); }
+  .people :global(.av img) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .people :global(.nm) { display: flex; flex-direction: column; min-width: 0; }
+  .people :global(.nm span) { font-size: 16px; line-height: 24px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color 300ms var(--ease); }
+  .people :global(a:hover .nm span) { color: var(--accent); }
+  .people :global(.nm small) { font-size: 12px; line-height: 16px; color: var(--dim); }
 </style>
 <script>
   import { loadIndex, norm, translit, pager, base, SORTS } from '../../lib/client.js';
-  import { tmdbImg, esc, initials, plural } from '../../lib/format.js';
+  import { tmdbImg, esc, initials, plural, hue } from '../../lib/format.js';
   const input = document.getElementById('q') as HTMLInputElement;
   let actors: [string, string, string][] | null = null;
   async function run() {
@@ -40,7 +48,9 @@ import Base from '../../layouts/Base.astro';
     const people = ppl.filter(([n]) => has(n)).slice(0, 12);
     hint.textContent = list.length || people.length ? `Нашлось: ${list.length} ${plural(list.length, 'тайтл', 'тайтла', 'тайтлов')}, ${people.length} ${plural(people.length, 'актёр', 'актёра', 'актёров')}` : 'Ничего не нашлось. В базе фильмы и сериалы, у которых на IMDb больше 10 тысяч оценок.';
     document.getElementById('people-s')!.hidden = !people.length;
-    document.getElementById('people')!.innerHTML = people.map(([n, slug, p]) => `<li><a href="${base}akter/${slug}/">${p ? `<img src="${tmdbImg(p, 80, 'w185')}" alt="" loading="lazy">` : `<b>${esc(initials(n))}</b>`}${esc(n)}</a></li>`).join('');
+    document.getElementById('people')!.innerHTML = people.map(([n, slug, p]) => `<li><a href="${base}akter/${slug}/">
+      <span class="av" style="--h:${hue(n)}"><b>${esc(initials(n))}</b>${p ? `<img src="${tmdbImg(p, 96, 'w185')}" alt="" loading="lazy" onerror="knvImg(this)">` : ''}</span>
+      <span class="nm"><span>${esc(n)}</span><small>Фильмография</small></span></a></li>`).join('');
     document.getElementById('titles-s')!.hidden = !list.length;
     if (list.length) pager(document.getElementById('grid')!, document.getElementById('more')!, document.getElementById('left'), list);
   }

@@ -51,10 +51,12 @@ p, li, dd { text-wrap: pretty; }
 .nav a { color: var(--muted); text-decoration: none; white-space: nowrap; padding: 8px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; transition: background 300ms var(--ease), color 300ms var(--ease); }
 .nav a:hover { color: var(--text); background: var(--surface); }
 .nav a[aria-current="page"] { color: var(--text); background: var(--surface-2); }
-.search { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 9999px; padding: 0 16px; height: 40px; width: 240px; max-width: 100%; transition: border-color 300ms var(--ease), box-shadow 300ms var(--ease); }
+.search { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 9999px; padding: 0 16px; height: 40px; width: 280px; max-width: 100%; transition: border-color 300ms var(--ease), box-shadow 300ms var(--ease); }
 .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(242, 181, 68, .18); }
 .search svg { color: var(--dim); flex-shrink: 0; }
-.search input { background: transparent; border: 0; outline: 0; font-size: 14px; flex: 1; min-width: 0; }
+.search input { background: transparent; border: 0; outline: 0; font-size: 14px; flex: 1; min-width: 0; text-overflow: ellipsis; }
+/* не поместилась подсказка — многоточие, а не обрубленное слово */
+.search input::placeholder { text-overflow: ellipsis; white-space: nowrap; }
 .search input::placeholder { color: var(--dim); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; min-height: 40px; font-size: 16px; line-height: 24px; border-radius: 12px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; transition: filter 300ms var(--ease), transform 500ms var(--ease); }
 .btn:hover { color: var(--accent-ink); filter: brightness(1.08); }
