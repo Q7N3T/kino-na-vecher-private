@@ -4,12 +4,11 @@
 Датасеты скачиваются с datasets.imdbws.com в data/.imdb/ (в git не попадают).
 
   python3 scripts/build_films.py              # база IMDb
-  python3 scripts/build_films.py --wikidata   # дополнить свободными постерами из Wikidata / Wikimedia Commons
   python3 scripts/build_films.py --tmdb       # дополнить постерами и описаниями из TMDB
                                               # (нужна переменная TMDB_API_KEY)
 Порог по числу оценок: --min-votes (по умолчанию 10000).
 """
-import argparse, concurrent.futures as cf, gzip, html, json, os, re, sys, time, urllib.parse, urllib.request
+import argparse, concurrent.futures as cf, gzip, json, os, re, sys, time, urllib.parse, urllib.request
 
 BASE = "https://datasets.imdbws.com/"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -353,66 +352,9 @@ def tmdb(films):
             if m.get(k): f[k] = m[k]
 
 
-def http_json(url, data=None):
-    for attempt in range(5):
-        try:
-            req = urllib.request.Request(url, data=data, headers={**UA, "Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=120) as r:
-                return json.load(r)
-        except (urllib.error.HTTPError, urllib.error.URLError, OSError) as e:
-            if isinstance(e, urllib.error.HTTPError) and e.code not in (429, 500, 502, 503, 504):
-                raise
-            time.sleep(2 ** attempt * 3)
-    sys.exit("Не удалось получить " + url[:80])
-
-
-def wikidata(films):
-    """Ищет по IMDb-номеру постер (P3383) или основное изображение (P18) и их лицензии на Commons."""
-    ids, found = list(films), {}
-    print(f"Wikidata: {len(ids):,} номеров IMDb…", file=sys.stderr)
-    for i in range(0, len(ids), 400):
-        values = " ".join(f'"{x}"' for x in ids[i:i + 400])
-        q = f"""SELECT ?imdb ?poster ?image WHERE {{ VALUES ?imdb {{ {values} }} ?item wdt:P345 ?imdb.
-                OPTIONAL {{ ?item wdt:P3383 ?poster }} OPTIONAL {{ ?item wdt:P18 ?image }} }}"""
-        j = http_json("https://query.wikidata.org/sparql", urllib.parse.urlencode({"query": q, "format": "json"}).encode())
-        for b in j["results"]["bindings"]:
-            url, kind = (b["poster"]["value"], "poster") if "poster" in b else (b["image"]["value"], "image") if "image" in b else (None, None)
-            if url and (b["imdb"]["value"] not in found or kind == "poster"):
-                found[b["imdb"]["value"]] = (urllib.parse.unquote(url.rsplit("/", 1)[1]), kind)
-        time.sleep(1)
-    print(f"  найдено изображений: {len(found):,} (постеров: {sum(k == 'poster' for _, k in found.values()):,})", file=sys.stderr)
-
-    # лицензия и автор каждого файла — для подписи на сайте
-    files = sorted({f for f, _ in found.values()})
-    meta = {}
-    for i in range(0, len(files), 50):
-        q = {"action": "query", "format": "json", "prop": "imageinfo", "iiprop": "extmetadata",
-             "iiextmetadatafilter": "LicenseShortName|Artist|AttributionRequired",
-             "titles": "|".join("File:" + f for f in files[i:i + 50])}
-        j = http_json("https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode(q))
-        norm = {n["to"]: n["from"] for n in j["query"].get("normalized", [])}
-        for page in j["query"]["pages"].values():
-            if "imageinfo" not in page: continue
-            m = page["imageinfo"][0].get("extmetadata", {})
-            name = norm.get(page["title"], page["title"])[5:]
-            artist = html.unescape(re.sub(r"<[^>]+>", "", m.get("Artist", {}).get("value", ""))).strip()
-            meta[name.replace(" ", "_")] = meta[name] = {"l": m.get("LicenseShortName", {}).get("value", ""), "a": artist[:120]}
-    for tid, (fname, kind) in found.items():
-        f = films[tid]
-        for k in ("w", "wk", "wl", "wa"): f.pop(k, None)
-        m = meta.get(fname) or meta.get(fname.replace("_", " "))
-        if not m: continue  # файл удалён с Commons
-        f["w"] = fname
-        if kind == "image": f["wk"] = 1  # не постер, а кадр или другое изображение
-        if m["l"]: f["wl"] = m["l"]
-        if m["a"]: f["wa"] = m["a"]
-    print(f"  с лицензией: {sum('w' in f for f in films.values()):,}", file=sys.stderr)
-
-
 SYN = os.path.join(ROOT, "data", "syn")
 SYN_PARTS = 64  # описания и состав с фото лежат отдельно и грузятся только на странице фильма
 CAST, CAST_VER = 10, 2  # сколько актёров брать из TMDB; версия — чтобы перезапросить кеш при изменениях (2: где посмотреть)
-INDEX = os.path.join(ROOT, "index.html")
 
 
 def syn_part(tid):
@@ -438,14 +380,6 @@ def write(films):
     with open(OUT, "w", encoding="utf-8") as fh:
         fh.write("// Сгенерировано scripts/build_films.py. Information courtesy of IMDb (https://www.imdb.com). Used with permission.\n")
         fh.write("window.FILMS=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
-    # новая версия в адресе, чтобы браузеры не показывали старую базу из кеша
-    ver = time.strftime("%Y%m%d%H%M", time.gmtime())
-    if not os.path.exists(INDEX):  # старый одностраничный сайт; новый на Astro собирается из data/ сам
-        return print(f"Готово: {len(out):,} фильмов, {os.path.getsize(OUT)/1e6:.1f} МБ, описаний {sum(map(len, parts)):,} → {OUT}", file=sys.stderr)
-    html = open(INDEX, encoding="utf-8").read()
-    html = re.sub(r'data/films\.js(\?v=\w+)?"', f'data/films.js?v={ver}"', html, count=1)
-    html = re.sub(r'const DATA_VER = "\w*"', f'const DATA_VER = "{ver}"', html, count=1)
-    open(INDEX, "w", encoding="utf-8").write(html)
     print(f"Готово: {len(out):,} фильмов, {os.path.getsize(OUT)/1e6:.1f} МБ, описаний {sum(map(len, parts)):,} → {OUT}", file=sys.stderr)
 
 
@@ -476,12 +410,10 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--min-votes", type=int, default=10000)
     ap.add_argument("--tmdb", action="store_true", help="дополнить уже собранную базу данными TMDB")
-    ap.add_argument("--wikidata", action="store_true", help="дополнить уже собранную базу изображениями из Wikidata")
     a = ap.parse_args()
-    if a.tmdb or a.wikidata:
+    if a.tmdb:
         films = load_existing()
-        if a.wikidata: wikidata(films)
-        if a.tmdb: tmdb(films)
+        tmdb(films)
     else:
         films = build_imdb(a.min_votes)
     write(films)

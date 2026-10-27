@@ -54,5 +54,23 @@ class WatchProviders(unittest.TestCase):
         self.assertIsNone(b.watch_providers(self.det({"link": "x", "flatrate": [{"provider_name": "Yandex"}]})))
 
 
+class RoundTrip(unittest.TestCase):
+    def test_reading_and_writing_the_base_changes_nothing(self):
+        """Запись повторяема: прочитанная и снова записанная база — байт в байт та же."""
+        import filecmp, glob, tempfile
+        films = b.load_existing()
+        with tempfile.TemporaryDirectory() as tmp:
+            out, syn = b.OUT, b.SYN
+            b.OUT, b.SYN = os.path.join(tmp, "films.js"), os.path.join(tmp, "syn")
+            try:
+                b.write(films)
+            finally:
+                b.OUT, b.SYN = out, syn
+            orig, new = open(b.OUT, encoding="utf-8").read(), open(os.path.join(tmp, "films.js"), encoding="utf-8").read()
+            self.assertEqual(orig, new)
+            for f in sorted(glob.glob(os.path.join(b.SYN, "*.json"))):
+                self.assertTrue(filecmp.cmp(f, os.path.join(tmp, "syn", os.path.basename(f)), shallow=False), f)
+
+
 if __name__ == "__main__":
     unittest.main()
