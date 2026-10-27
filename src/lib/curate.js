@@ -132,9 +132,21 @@ export function curate(list, { time = 999, mood = 'any', prof = null, day = '', 
   return { items: chosen, rest };
 }
 
+// Из кого выбирается выбор дня: до четырёх лучших находок (или «по вкусу») с рейтингом от 7,2.
+// Уже выбранное раньше не предлагаем; открытое — только если отложено в «Хочу посмотреть».
+export function dailyCandidates(list, { time = 999, mood = 'any', prof = null, watch = [], day = '' } = {}) {
+  const wl = new Set(watch);
+  const seen = prof?.seen || new Set(), picked = prof?.picked || new Set();
+  const cand = list.filter((f) => f.imdb >= 7.2 && !picked.has(f.id) && (wl.has(f.id) || !seen.has(f.id)));
+  // curate прячет всё открытое раньше — отложенное в «Хочу посмотреть» для выбора дня открытым не считаем
+  const forPick = prof && { ...prof, seen: new Set([...seen].filter((id) => !wl.has(id) || picked.has(id))) };
+  const { items } = curate(cand, { time, mood, prof: forPick, day: day + '|pick' });
+  const best = items.filter((x) => x.why === 'gem' || x.why === 'taste');
+  return (best.length ? best : items).slice(0, 4).map((x) => x.f);
+}
+
 // Выбор дня: меняется в полночь по времени зрителя, при тех же фильтрах весь день один и тот же.
-// Обычно это находка (или по вкусу) с рейтингом от 7,2 — что-то, о чём человек мог не знать.
-// Уже открытое и выбранное раньше не предлагаем, отложенное в «Хочу посмотреть» — можно.
+// Обычно это находка (или по вкусу) — что-то, о чём человек мог не знать.
 export function dailyPick(list, { time = 999, mood = 'any', kind = 'any', prof = null, watch = [] } = {}) {
   const day = new Date().toDateString();
   const key = `${time}|${mood}|${kind}`;
@@ -145,14 +157,9 @@ export function dailyPick(list, { time = 999, mood = 'any', kind = 'any', prof =
   const keep = saved[key] && list.find((f) => f.id === saved[key]);
   if (keep) return keep;
 
-  const wl = new Set(watch);
-  const seen = prof?.seen || new Set(), picked = prof?.picked || new Set();
-  const cand = list.filter((f) => f.imdb >= 7.2 && !picked.has(f.id) && (wl.has(f.id) || !seen.has(f.id)));
-  const { items } = curate(cand, { time, mood, prof, day: day + '|pick' });
-  const best = items.filter((x) => x.why === 'gem' || x.why === 'taste');
-  const from = (best.length ? best : items).slice(0, 4);
+  const from = dailyCandidates(list, { time, mood, prof, watch, day });
   if (!from.length) return null;
-  const f = from[Math.floor(rng(day + key)() * from.length)].f;
+  const f = from[Math.floor(rng(day + key)() * from.length)];
   saved[key] = f.id;
   try { store?.setItem('knv-daily', JSON.stringify(saved)); } catch {}
   return f;
