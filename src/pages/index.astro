@@ -45,13 +45,13 @@ const FAQ = [
 ];
 const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
 ---
-<Base section="">
+<Base section="" intro>
   <section class="wrap hero">
     <div class="hero-main">
-      <p class="eyebrow">Сейчас <span data-now></span> · подберём под ваш вечер</p>
-      <h1 class="sentence">Сегодня у меня <span class="nw"><button class="slot" data-focus="g-time" id="s-time">{TIMES[0].word}</button>,</span> хочется <span class="nw"><button class="slot" data-focus="g-mood" id="s-mood">{MOODS[0].word}</button>.</span> Смотрим <button class="slot" data-focus="g-kind" id="s-kind">{KINDS[0].word}</button></h1>
-      <p class="lead">Скажите, сколько у вас времени и какое настроение. Подберём фильм или сериал и покажем, во сколько будет финал.</p>
-      <div class="pickers">
+      <p class="eyebrow enter" style="--d:0">Сейчас <span data-now></span> · подберём под ваш вечер</p>
+      <h1 class="sentence enter" style="--d:1">Сегодня у меня <span class="nw"><button class="slot" data-focus="g-time" id="s-time">{TIMES[0].word}</button>,</span> хочется <span class="nw"><button class="slot" data-focus="g-mood" id="s-mood">{MOODS[0].word}</button>.</span> Смотрим <button class="slot" data-focus="g-kind" id="s-kind">{KINDS[0].word}</button></h1>
+      <p class="lead enter" style="--d:2">Скажите, сколько у вас времени и какое настроение. Подберём фильм или сериал и покажем, во сколько будет финал.</p>
+      <div class="pickers enter" style="--d:3">
         <div><p class="picker-l" id="l-time">Сколько есть времени</p>
           <div class="chips three" role="group" aria-labelledby="l-time" id="g-time">{TIMES.map((t) => <button class="chip" data-time={t.v} aria-pressed={String(t.v === DEF.time)} set:html={t.chip.replace(/^Около /, '<span class="m-hide">Около </span>')}></button>)}</div></div>
         <div><p class="picker-l" id="l-mood">Какое настроение</p>
@@ -59,9 +59,9 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
         <div><p class="picker-l" id="l-kind">Что смотрим</p>
           <div class="chips three" role="group" aria-labelledby="l-kind" id="g-kind">{KINDS.map((k) => <button class="chip" data-kind={k.v} aria-pressed={String(k.v === DEF.kind)}>{k.chip}</button>)}</div></div>
       </div>
-      <p class="proof"><b>{num(films.length - nSeries)}</b> фильмов и <b>{num(nSeries)}</b> сериалов с рейтингом IMDb · база обновляется каждую неделю</p>
+      <p class="proof enter" style="--d:4"><b>{num(films.length - nSeries)}</b> фильмов и <b>{num(nSeries)}</b> сериалов с рейтингом IMDb · база обновляется каждую неделю</p>
     </div>
-    <div class="pick" id="pick-card">
+    <div class="pick enter" id="pick-card" style="--d:3">
       <a class="pick-a" id="pick-a" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
         <span class="pick-p poster" style={`--h:${hue(tonight[0].id)}`} id="pick-poster" set:html={tonight[0].p ? `<img src="${tmdbImg(tonight[0].p, 200)}" alt="" onerror="knvImg(this)">` : ''}></span>
         <span class="pick-b">
@@ -156,7 +156,10 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
   .proof b { color: var(--text-2); font-weight: 600; }
   .slot { font: inherit; color: var(--accent); -webkit-text-fill-color: var(--accent); background: none; border: 0; padding: 0; border-bottom: 3px solid var(--accent); cursor: pointer; line-height: 1.05; display: inline-block; transition: color 300ms var(--ease); }
   .slot:hover { color: var(--accent-hi); }
-  .slot.pop { animation: pop .45s var(--ease); }
+  /* перелистывание: новое слово выезжает снизу, лишнее обрезано по краю строки, подчёркивание видно */
+  .slot { clip-path: inset(-.15em -.3em 0 -.3em); }
+  .slot :global(.sv) { display: inline-block; animation: flip-in 500ms var(--ease) both; }
+  @keyframes flip-in { from { opacity: 0; transform: translateY(70%); } to { opacity: 1; transform: none; } }
   .pickers { display: grid; gap: 16px; margin-top: 32px; }
   .picker-l { margin: 0 0 8px; font-size: 14px; color: var(--dim); }
   .pick { flex: 1 1 320px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 16px; transition: border-color 300ms var(--ease), transform 500ms var(--ease); }
@@ -271,10 +274,17 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
   let list = [];
   const $ = (id) => document.getElementById(id)!;
 
-  function label() {
-    $('s-time').textContent = TIMES.find((t) => t.v === state.time)!.word;
-    $('s-mood').textContent = state.mood === 'any' ? 'чего угодно' : MOODS.find((m) => m.v === state.mood)!.word;
-    $('s-kind').textContent = KINDS.find((k) => k.v === state.kind)!.word;
+  // слово во фразе: изменённое перелистывается снизу вверх, как на табло
+  function put(id: string, word: string, changed: string) {
+    const el = $(id);
+    if (id !== changed) { if (el.textContent !== word) el.textContent = word; return; }
+    el.innerHTML = `<span class="sv">${word}</span>`;
+  }
+
+  function label(changed = '') {
+    put('s-time', TIMES.find((t) => t.v === state.time)!.word, changed);
+    put('s-mood', state.mood === 'any' ? 'чего угодно' : MOODS.find((m) => m.v === state.mood)!.word, changed);
+    put('s-kind', KINDS.find((k) => k.v === state.kind)!.word, changed);
     document.querySelectorAll<HTMLButtonElement>('[data-time]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.time! === state.time)));
     document.querySelectorAll<HTMLButtonElement>('[data-mood]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mood === state.mood)));
     document.querySelectorAll<HTMLButtonElement>('[data-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === state.kind)));
@@ -367,8 +377,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     else if (b.id === 'pick-back') { showPick(daily, dailyLabel, false); return; }
     else return;
     try { sessionStorage.setItem('knv-pick', JSON.stringify(state)); } catch {}
-    label();
-    const s = $(changed); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop');
+    label(changed);
     update();
   });
 
@@ -400,6 +409,18 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     });
   }, { rootMargin: '0px 0px -40% 0px' });
   document.querySelectorAll('.tag-t .w').forEach((w) => words.observe(w));
+
+  // плитки подборок наклоняются вслед за курсором — только с мышью и если анимация не отключена
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll<HTMLElement>('.coll').forEach((c) => {
+      c.addEventListener('pointermove', (e) => {
+        const r = c.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+        c.style.transform = `perspective(800px) rotateX(${(-y * 8).toFixed(2)}deg) rotateY(${(x * 10).toFixed(2)}deg) translateY(-4px)`;
+      });
+      c.addEventListener('pointerleave', () => (c.style.transform = ''));
+    });
+  }
 
   // закрытие вопроса: сначала ответ уходит, потом details закрывается
   document.querySelectorAll<HTMLDetailsElement>('.faq details').forEach((d) => {

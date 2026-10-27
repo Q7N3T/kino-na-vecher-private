@@ -2,8 +2,9 @@
 import '../styles/global.css';
 import { icon } from '../lib/icons.js';
 
-interface Props { title?: string; description?: string; section?: string; image?: string }
-const { title, description = 'Подберём фильм или сериал на сегодняшний вечер — по свободному времени и настроению.', section = '', image } = Astro.props;
+interface Props { title?: string; description?: string; section?: string; image?: string; intro?: boolean }
+const { title, description = 'Подберём фильм или сериал на сегодняшний вечер — по свободному времени и настроению.', section = '', image, intro = false } = Astro.props;
+const INTRO_WORD = [...'Кино на вечер'];
 const base = import.meta.env.BASE_URL;
 const fullTitle = title ? `${title} — Кино на вечер` : 'Кино на вечер — что посмотреть сегодня';
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -19,8 +20,13 @@ const CONTACT = ''; // почта для сотрудничества, напр�
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<script is:inline>
+<script is:inline define:vars={{ intro }}>
   document.documentElement.classList.add('js');
+  // заставка — только на главной, один раз за визит и не тем, кто отключил анимацию в системе
+  try {
+    if (intro && !sessionStorage.getItem('knv-intro') && !matchMedia('(prefers-reduced-motion: reduce)').matches)
+      document.documentElement.classList.add('intro-on');
+  } catch {}
   // картинка не загрузилась через wsrv.nl — пробуем напрямую с TMDB, не вышло и так — остаётся заглушка
   window.knvImg = (i) => {
     const u = !i.dataset.f && new URL(i.src).searchParams.get('url');
@@ -45,6 +51,33 @@ const CONTACT = ''; // почта для сотрудничества, напр�
 </head>
 <body data-base={base}>
 <a class="skip" href="#main">К содержимому</a>
+{intro && (
+  <div class="intro" id="intro" aria-hidden="true">
+    <div class="intro-bar is-up"></div>
+    <div class="intro-bar is-down"></div>
+    <div class="intro-beam"></div>
+    <div class="intro-c">
+      <i class="intro-dot"></i>
+      <span class="intro-w">{INTRO_WORD.map((ch, i) => <span style={`--i:${i}`}>{ch === ' ' ? '\u00a0' : ch}</span>)}</span>
+    </div>
+    <div class="intro-grain"></div>
+    <script is:inline>
+      (() => {
+        const html = document.documentElement, el = document.getElementById('intro');
+        if (!html.classList.contains('intro-on')) { el.remove(); return; }
+        // как начало сеанса: точка разгорается, проявляется название, проходит луч, кадр раскрывается
+        let done = false;
+        const finish = () => { if (done) return; done = true; html.classList.remove('intro-on', 'intro-open'); el.remove(); try { sessionStorage.setItem('knv-intro', '1'); } catch {} };
+        const open = () => { if (html.classList.contains('intro-open')) return; html.classList.add('intro-open'); setTimeout(finish, 750); };
+        // отсчёт — с первого кадра: пока грузятся шрифты, страница ещё не нарисована
+        requestAnimationFrame(() => setTimeout(open, 1500));
+        // любое действие пропускает заставку
+        ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach((t) => addEventListener(t, open, { once: true, passive: true }));
+        addEventListener('pageshow', (e) => { if (e.persisted) finish(); });
+      })();
+    </script>
+  </div>
+)}
 <header class="top">
   <div class="bar">
     <a class="logo" href={base}><i aria-hidden="true"></i>Кино на вечер</a>
