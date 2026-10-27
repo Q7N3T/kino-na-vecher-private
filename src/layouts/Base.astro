@@ -14,7 +14,11 @@ const nav = [
 const tabs = [
   ['', 'Главная', 'house'], ['filmy/', 'Фильмы', 'film'], ['serialy/', 'Сериалы', 'tv'], ['poisk/', 'Поиск', 'search'], ['izbrannoe/', 'Список', 'bookmark'],
 ];
-const CONTACT = ''; // почта для сотрудничества, например "hello@example.ru"
+const CONTACT = '';
+// аналитика Umami: без cookie и без личных данных. Включается переменной репозитория UMAMI_ID
+// (Settings → Secrets and variables → Actions → Variables), без неё на сайт ничего не грузится
+const UMAMI_ID = import.meta.env.PUBLIC_UMAMI_ID;
+const UMAMI_SRC = import.meta.env.PUBLIC_UMAMI_SRC || 'https://cloud.umami.is/script.js'; // почта для сотрудничества, например "hello@example.ru"
 ---
 <!doctype html>
 <html lang="ru">
@@ -47,6 +51,7 @@ const CONTACT = ''; // почта для сотрудничества, напр�
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://wsrv.nl" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Unbounded:wght@700&display=swap" rel="stylesheet">
+{UMAMI_ID && <script is:inline defer src={UMAMI_SRC} data-website-id={UMAMI_ID} data-do-not-track="true"></script>}
 <slot name="head" />
 </head>
 <body data-base={base}>

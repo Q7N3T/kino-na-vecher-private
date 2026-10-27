@@ -62,7 +62,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
       <p class="proof enter" style="--d:4"><b>{num(films.length - nSeries)}</b> фильмов и <b>{num(nSeries)}</b> сериалов с рейтингом IMDb · база обновляется каждую неделю</p>
     </div>
     <div class="pick enter" id="pick-card" style="--d:3">
-      <a class="pick-a" id="pick-a" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
+      <a class="pick-a" id="pick-a" data-umami-event="Выбор на сегодня" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
         <span class="pick-p poster" style={`--h:${hue(tonight[0].id)}`} id="pick-poster" set:html={tonight[0].p ? `<img src="${tmdbImg(tonight[0].p, 200)}" alt="" onerror="knvImg(this)">` : ''}></span>
         <span class="pick-b">
           <small id="pick-l">Выбор на сегодня</small>
@@ -74,7 +74,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
       <div class="pick-f">
         <span class="pick-n" id="pick-n">Новый выбор — в полночь</span>
         <button class="back" id="pick-back" type="button" hidden><Fragment set:html={icon('undo', 16)} /><span>Выбор дня</span></button>
-        <button class="dice" id="dice" type="button" aria-label="Случайный выбор под ваш вечер"><Fragment set:html={icon('dice', 18)} /><span id="dice-t">Не то? Случайный</span></button>
+        <button class="dice" id="dice" type="button" aria-label="Случайный выбор под ваш вечер" data-umami-event="Кубик"><Fragment set:html={icon('dice', 18)} /><span id="dice-t">Не то? Случайный</span></button>
       </div>
     </div>
   </section>
@@ -140,7 +140,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     <div class="cta">
       <h2 id="h-cta">Осталось выбрать, что смотреть</h2>
       <p>Бесплатно, без регистрации и рекламы.</p>
-      <button class="btn" id="to-top" type="button">Подобрать фильм на вечер<Fragment set:html={icon('arrowUp', 18)} /></button>
+      <button class="btn" id="to-top" type="button" data-umami-event="Подобрать фильм внизу">Подобрать фильм на вечер<Fragment set:html={icon('arrowUp', 18)} /></button>
     </div>
   </section>
 </Base>

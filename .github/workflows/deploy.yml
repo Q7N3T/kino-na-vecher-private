@@ -40,6 +40,9 @@ jobs:
 
       - name: Собрать сайт
         run: npm run build
+        env:
+          PUBLIC_UMAMI_ID: ${{ vars.UMAMI_ID }}    # аналитика; пусто — сайт без аналитики
+          PUBLIC_UMAMI_SRC: ${{ vars.UMAMI_SRC }}  # свой сервер Umami; пусто — Umami Cloud
 
       - uses: actions/upload-pages-artifact@v3
         with:
