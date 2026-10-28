@@ -164,3 +164,12 @@ export function dailyPick(list, { time = 999, mood = 'any', kind = 'any', prof =
   try { store?.setItem('knv-daily', JSON.stringify(saved)); } catch {}
   return f;
 }
+
+// «Популярное сейчас»: самое обсуждаемое по TMDB, но не ниже 7 на IMDb — сайт обещает хорошее, а не поток.
+// exclude — уже показанное выше на странице; kind — 'any' | 'movie' | 'series'.
+export function popularNow(list, { kind = 'any', exclude = new Set(), n = 12 } = {}) {
+  return list
+    .filter((f) => f.imdb >= 7 && !exclude.has(f.id) && (kind === 'any' || (kind === 'series') === !!f.k))
+    .sort((a, b) => b.pp - a.pp)
+    .slice(0, n);
+}

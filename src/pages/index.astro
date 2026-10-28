@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { load, COLLECTIONS, collection } from '../lib/data.js';
-import { curate } from '../lib/curate.js';
+import { curate, popularNow } from '../lib/curate.js';
 import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur, num, finish } from '../lib/format.js';
 import { icon } from '../lib/icons.js';
 
@@ -12,12 +12,8 @@ const DEF = { time: 105, mood: 'laugh', kind: 'any' };
 const curated = curate(films.filter((f) => f.min <= DEF.time && f.m.includes(DEF.mood)), { time: DEF.time, mood: DEF.mood, day: new Date().toDateString() }).items;
 const tonight = curated.map((x) => x.f);
 const WHY = { gem: 'Находка', classic: 'Классика', taste: 'По вашему вкусу' };
-const popular = {
-  // с запасом: карточки, которые уже есть в «Подходит на сегодня», скрываются, а следующие встают на их место
-  all: films.slice(0, 24),
-  movie: films.filter((f) => !f.k).slice(0, 24),
-  series: films.filter((f) => f.k).slice(0, 24),
-};
+// в собранной странице — только вкладка «Всё»; «Фильмы» и «Сериалы» браузер рисует по клику
+const popular = popularNow(films, { exclude: new Set(tonight.map((f) => f.id)) });
 const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 100000).length }));
 const nSeries = films.filter((f) => f.k).length;
 // слоган: каждое слово отдельно, чтобы при прокрутке они проявлялись по одному
@@ -125,7 +121,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
         <button class="chip" data-tab="series" aria-pressed="false">Сериалы</button>
       </div>
     </div>
-    {Object.entries(popular).map(([k, l]) => <div class="grid row" data-pop={k} hidden={k !== 'all'} set:html={l.map((f, i) => cardHTML(f, base, { i })).join('')}></div>)}
+    <div class="grid row" id="pop" set:html={popular.map((f, i) => cardHTML(f, base, { i })).join('')}></div>
   </section>
 
   <section class="sec wrap faq reveal" aria-labelledby="h-faq">
@@ -270,7 +266,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
 <script>
   import { loadIndex, matches, base, watchlist } from '../lib/client.js';
   import { profile } from '../lib/taste.js';
-  import { curate, dailyPick } from '../lib/curate.js';
+  import { curate, dailyPick, popularNow } from '../lib/curate.js';
   import { cardHTML, MOODS, TIMES, KINDS, plural, dur, kindName, seasons, tmdbImg, hue, finish, cap } from '../lib/format.js';
 
   const state = { time: 105, mood: 'laugh', kind: 'any' };
@@ -305,10 +301,10 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     list = [...items.map((x) => x.f), ...rest];
     const forms = KINDS.find((k) => k.v === state.kind)!.forms;
     $('tonight-n').textContent = list.length ? list.length.toLocaleString('ru-RU') + ' ' + plural(list.length, ...forms) + (prof.n ? ' · с учётом ваших вкусов' : '') : '';
-    dedupe(new Set(list.slice(0, 12).map((f) => f.id)));
     $('tonight').innerHTML = list.length
       ? items.map((x, i) => cardHTML(x.f, base, { i, why: WHY[x.why], time: state.time })).join('')
       : '<div class="empty"><h2>Под такой вечер ничего нет</h2><p>Дайте себе чуть больше времени или выберите другое настроение.</p></div>';
+    renderPop(); // после подборки: популярное не повторяет то, что уже в ней
     const q = new URLSearchParams({ time: String(state.time), mood: state.mood });
     $('tonight-all').setAttribute('href', `${base}${state.kind === 'series' ? 'serialy' : 'filmy'}/?${q}`);
     // выбор дня: меняется в полночь, при тех же фильтрах весь день один и тот же
@@ -392,8 +388,9 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     else if (d.kind) { state.kind = d.kind; changed = 's-kind'; }
     else if (d.focus) { ($(d.focus).querySelector('[aria-pressed="true"]') as HTMLElement)?.focus(); return; }
     else if (d.tab) {
-      document.querySelectorAll<HTMLElement>('[data-pop]').forEach((g) => (g.hidden = g.dataset.pop !== d.tab));
+      popTab = d.tab;
       document.querySelectorAll<HTMLElement>('[data-tab]').forEach((t) => t.setAttribute('aria-pressed', String(t === b)));
+      renderPop();
       return;
     } else if (b.id === 'dice') { roll(); return; }
     else if (b.id === 'pick-back') { showPick(daily, dailyLabel, false); return; }
@@ -403,18 +400,14 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     update();
   });
 
-  // «Популярное сейчас» без повторов с подборкой выше: по 12 карточек, уже показанные пропускаем
-  function dedupe(shown: Set<string>) {
-    document.querySelectorAll<HTMLElement>('[data-pop]').forEach((g) => {
-      let n = 0;
-      g.querySelectorAll<HTMLElement>('.card').forEach((c) => {
-        const skip = shown.has(c.dataset.id!) || n >= 12;
-        c.hidden = skip;
-        if (!skip) n++;
-      });
-    });
+  // «Популярное сейчас»: только активная вкладка, без того, что уже есть в «Подходит на сегодня»
+  let popTab = 'all';
+  async function renderPop() {
+    const all = await loadIndex();
+    const shown = new Set([...document.querySelectorAll<HTMLElement>('#tonight .card')].map((c) => c.dataset.id!));
+    const kind = popTab === 'all' ? 'any' : popTab;
+    $('pop').innerHTML = popularNow(all, { kind, exclude: shown }).map((f, i) => cardHTML(f, base, { i })).join('');
   }
-  dedupe(new Set([...document.querySelectorAll<HTMLElement>('#tonight .card')].map((c) => c.dataset.id!)));
 
   // разделы поднимаются и проявляются один раз, когда доходят до экрана
   const seen = new IntersectionObserver((es) => es.forEach((e) => {

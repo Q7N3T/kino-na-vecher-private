@@ -101,3 +101,15 @@ test('выбор дня: в маленьком списке уже выбран�
   const from = dailyCandidates([a, b, c], { time: 130, mood: 'laugh', prof: taste([a.id], [a.id]), watch: [a.id] });
   assert.ok(from.length > 0 && !from.some((f) => f.id === a.id));
 });
+
+test('популярное сейчас: по популярности, от 7 на IMDb, без уже показанного, нужного типа', async () => {
+  const { popularNow } = await import('../src/lib/curate.js');
+  n = 0;
+  const list = [film('Хит', { pp: 900, imdb: 7.4 }), film('Провал', { pp: 990, imdb: 2.4 }), film('Сериал', { pp: 800, imdb: 8.1, k: 's' }),
+    film('Показан', { pp: 950, imdb: 8 }), film('Тихий', { pp: 10, imdb: 7.9 })];
+  const t = (xs) => xs.map((f) => f.t);
+  assert.deepEqual(t(popularNow(list, { exclude: new Set([list[3].id]) })), ['Хит', 'Сериал', 'Тихий']);
+  assert.deepEqual(t(popularNow(list, { kind: 'movie' })), ['Показан', 'Хит', 'Тихий']);
+  assert.deepEqual(t(popularNow(list, { kind: 'series' })), ['Сериал']);
+  assert.equal(popularNow(list, { n: 2 }).length, 2);
+});
