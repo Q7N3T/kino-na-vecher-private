@@ -41,13 +41,26 @@ GENRES_RU = {
 }
 
 
-def moods(g):
-    """Настроения выводятся из жанров IMDb: грубо, но предсказуемо."""
+HEAVY = {"Drama", "Thriller", "Horror", "War", "Mystery", "Biography", "History", "Documentary", "Film-Noir"}
+TMDB_COMEDY = 35
+
+
+def laughs(g, tg=None):
+    """Смешно, когда комедия — главное. IMDb ставит «Comedy» широко и перечисляет жанры по алфавиту,
+    поэтому: рядом нет тяжёлого жанра, криминал или боевик — не оба сразу, и TMDB, если знает жанры, согласен."""
+    if "Comedy" not in g or g & HEAVY or {"Crime", "Action"} <= g:
+        return False
+    return not tg or TMDB_COMEDY in tg
+
+
+def moods(g, tg=None):
+    """Настроения выводятся из жанров IMDb (tg — жанры TMDB, когда они есть): грубо, но предсказуемо."""
     g = set(g); m = []
-    if "Comedy" in g: m.append("laugh")
+    funny = laughs(g, tg)  # метка «Comedy» без смешного — не повод выкидывать тайтл из грустного и умного
+    if funny: m.append("laugh")
     if g & {"Thriller", "Horror", "Mystery", "Crime", "Action"}: m.append("nerve")
-    if "War" in g or ("Drama" in g and g & {"Romance", "Family"} and "Comedy" not in g): m.append("sad")
-    if g & {"Sci-Fi", "Documentary", "History", "Mystery"} or ("Drama" in g and not g & {"Comedy", "Action", "Romance"}): m.append("think")
+    if "War" in g or ("Drama" in g and g & {"Romance", "Family"} and not funny): m.append("sad")
+    if g & {"Sci-Fi", "Documentary", "History", "Mystery"} or ("Drama" in g and not funny and not g & {"Action", "Romance"}): m.append("think")
     if g & {"Biography", "Sport", "Music", "Musical", "Adventure", "Animation"}: m.append("inspire")
     return m
 
@@ -275,7 +288,7 @@ def tmdb(films):
                     j = json.load(r)
                 res = j.get("movie_results") or j.get("tv_results") or []
                 m = res[0] if res else {}
-                v = {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview"), "pop": m.get("popularity")}
+                v = {"p": m.get("poster_path"), "t": m.get("title") or m.get("name"), "ov": m.get("overview"), "pop": m.get("popularity"), "tg": m.get("genre_ids")}
                 sea = (j.get("tv_season_results") or [{}])[0]
                 if not m and sea.get("show_id"):
                     # на IMDb отдельный сериал, а в TMDB — сезон другого («Чёрная гадюка 2», «Твин Пикс» 2017):
@@ -347,14 +360,14 @@ def tmdb(films):
         if m.get("t") and (re.search("[а-яё]", m["t"], re.I) or not re.search("[а-яё]", f["t"], re.I)): f["t"] = m["t"]
         if m.get("ov"): f["syn"] = m["ov"]
         if m.get("pop"): f["pop"] = round(m["pop"], 1)  # популярность TMDB — порядок как на их сайте
-        for k in ("ts", "nx", "cr", "wp"):
+        for k in ("ts", "nx", "cr", "wp", "tg"):
             f.pop(k, None)
             if m.get(k): f[k] = m[k]
 
 
 SYN = os.path.join(ROOT, "data", "syn")
 SYN_PARTS = 64  # описания и состав с фото лежат отдельно и грузятся только на странице фильма
-CAST, CAST_VER = 10, 2  # сколько актёров брать из TMDB; версия — чтобы перезапросить кеш при изменениях (2: где посмотреть)
+CAST, CAST_VER = 10, 3  # сколько актёров брать из TMDB; версия — чтобы перезапросить кеш при изменениях (2: где посмотреть, 3: жанры TMDB)
 
 
 def syn_part(tid):
@@ -364,7 +377,7 @@ def syn_part(tid):
 def write(films):
     out, parts = [], [{} for _ in range(SYN_PARTS)]
     for f in sorted(films.values(), key=lambda f: (-f["v"])):
-        f["m"] = moods(f["g"])
+        f["m"] = moods(f["g"], f.pop("tg", None))  # жанры TMDB нужны только для настроений, в базу не идут
         f["genres"] = [GENRES_RU.get(x, x.lower()) for x in f.pop("g")]
         if f["o"] == f["t"]: f.pop("o")
         f.pop("hs", None)
