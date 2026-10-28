@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { load } from '../lib/data.js';
 import { cardHTML, MOODS, cap, num, plural } from '../lib/format.js';
+import { sticker, stickerFor } from '../lib/stickers.js';
 
 const { kind } = Astro.props; // 'movie' | 'series'
 const base = import.meta.env.BASE_URL;
@@ -21,13 +22,13 @@ const DECADES = [['', 'Все годы'], ['2020', '2020-е'], ['2010', '2010-е
     <form class="filters" id="filters" data-kind={kind}>
       <div class="f-row">
         <div class="chips scroll" role="group" aria-label="Время">
-          {[999, 105, 130].map((v) => <button type="button" class="chip" data-time={v} aria-pressed={String(v === 999)}>{v === 999 ? 'Любая длина' : (isS ? 'Серия до ' : 'До ') + (v === 105 ? '1,5 часа' : '2 часов')}</button>)}
+          {[999, 105, 130].map((v) => <button type="button" class="chip" data-time={v} aria-pressed={String(v === 999)}><Fragment set:html={sticker(v === 999 ? 'anyLen' : stickerFor('time', v))} />{v === 999 ? 'Любая длина' : (isS ? 'Серия до ' : 'До ') + (v === 105 ? '1,5 часа' : '2 часов')}</button>)}
         </div>
       </div>
       <div class="f-row">
         <div class="chips moods" role="group" aria-label="Настроение">
-          {MOODS.map((m) => <button type="button" class="chip" data-mood={m.v} aria-pressed="false">{cap(m.word)}</button>)}
-          <button type="button" class="chip" data-mood="any" aria-pressed="true">Любое настроение</button>
+          {MOODS.map((m) => <button type="button" class="chip" data-mood={m.v} aria-pressed="false"><Fragment set:html={sticker(m.v)} />{cap(m.word)}</button>)}
+          <button type="button" class="chip" data-mood="any" aria-pressed="true"><Fragment set:html={sticker('anyMood')} />Любое настроение</button>
         </div>
       </div>
       <div class="f-row selects">

@@ -1,7 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
 import { similar } from '../lib/data.js';
-import { cardHTML, status, years, kindName, dur, plural, num, votes, tmdbImg, hue, initials } from '../lib/format.js';
+import { sticker } from '../lib/stickers.js';
+import { cardHTML, MOODS, status, years, kindName, dur, plural, num, votes, tmdbImg, hue, initials } from '../lib/format.js';
 import { watchLink } from '../lib/partners.js';
 
 const { f } = Astro.props;
@@ -34,6 +35,8 @@ const jsonld = {
 <Base title={`${f.t} (${years(f)})`} description={desc} section={section} image={f.p ? tmdbImg(f.p, 500) : undefined}>
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonld)} />
   <section class="hero-t" style={`--h:${hue(f.id)}`}>
+    <!-- фон шапки — тот же постер, размытый в свет: заполняет ширину, как у Apple TV -->
+    {f.p && <img class="t-bg" src={tmdbImg(f.p, 342)} alt="" aria-hidden="true" onerror="knvImg(this)" />}
     <div class="wrap">
       <nav class="crumbs" aria-label="Навигация"><a href={base}>Главная</a> / <a href={base + section}>{f.k ? 'Сериалы' : 'Фильмы'}</a> / <span>{f.t}</span></nav>
       <div class="t-row">
@@ -50,6 +53,7 @@ const jsonld = {
             <p>{facts.join(' · ')}</p>
             <p>{score.join(' · ')}{st?.on && st.more ? ` · ${st.more}` : ''}</p>
           </div>
+          {f.m.length > 0 && <ul class="moods-l" aria-label="Настроение">{f.m.map((m) => <li><Fragment set:html={sticker(m)} />{MOODS.find((x) => x.v === m)?.tag}</li>)}</ul>}
           <p class="clock">{f.k ? 'Первая серия закончится в' : 'Закончится в'} <b data-end={f.min}></b>, если начать сейчас</p>
           <div class="acts">
             {go
@@ -59,6 +63,8 @@ const jsonld = {
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg><span>В мой список</span></button>
             <a class="btn ghost" href={yt} rel="noopener" target="_blank" data-umami-event="Трейлер" data-umami-event-title={f.t}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"></path></svg>Трейлер</a>
           </div>
+          {f.syn && <p class="syn">{f.syn}</p>}
+          <p class="more">Подробнее: <a href={`https://www.imdb.com/title/${f.id}/`} rel="noopener" target="_blank">IMDb ↗</a> · <a href={`https://www.themoviedb.org/redirect?external_source=imdb_id&external_id=${f.id}`} rel="noopener" target="_blank">TMDB ↗</a></p>
           {watchGroups.length > 0 && !(go && watchGroups.length === 1 && watchGroups[0].items.length === 1) && ( /* один кинотеатр — уже на главной кнопке */
             <section class="where" aria-labelledby="h-where">
               <h2 id="h-where">Где посмотреть</h2>
@@ -86,10 +92,6 @@ const jsonld = {
 
   <div class="wrap t-body">
     <div class="t-main">
-      <section>
-        {f.syn && <><h2>{f.k ? 'О сериале' : 'О фильме'}</h2><p class="syn">{f.syn}</p></>}
-        <p class="more">Подробнее: <a href={`https://www.imdb.com/title/${f.id}/`} rel="noopener" target="_blank">IMDb ↗</a> · <a href={`https://www.themoviedb.org/redirect?external_source=imdb_id&external_id=${f.id}`} rel="noopener" target="_blank">TMDB ↗</a></p>
-      </section>
       {f.crew.length > 0 && (
         <section>
           <h2>В ролях</h2>
@@ -125,6 +127,9 @@ const jsonld = {
 </Base>
 
 <style>
+  .hero-t { position: relative; overflow: hidden; isolation: isolate; }
+  .t-bg { position: absolute; left: -10%; top: -10%; z-index: -1; width: 120%; max-width: none; height: 110%; object-fit: cover; /* низ — ровно по низу шапки, там и затухает */ filter: blur(64px) saturate(1.3); opacity: .28;
+    -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent); mask-image: linear-gradient(to bottom, #000 40%, transparent); }
   .hero-t .wrap { padding-top: 24px; padding-bottom: 48px; }
   .t-row { display: flex; flex-wrap: wrap; gap: 40px 48px; align-items: flex-start; }
   .t-poster { flex: 0 1 320px; min-width: 220px; margin: 0; border-radius: 16px; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .9); animation: rise 700ms var(--ease) both; }
@@ -137,6 +142,8 @@ const jsonld = {
   .facts { display: flex; flex-direction: column; gap: 4px; max-width: 720px; }
   .facts p { margin: 0; font-size: 16px; line-height: 24px; color: var(--muted); }
   .facts p + p { color: var(--dim); font-size: 14px; line-height: 20px; }
+  .moods-l { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .moods-l li { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; line-height: 20px; color: var(--muted); }
   .clock { margin: 0; font-size: 18px; line-height: 28px; color: var(--muted); }
   .clock b { color: var(--accent); font-weight: 600; }
   .clock:has(> b:empty) { visibility: hidden; } /* время ещё не посчитано */
@@ -154,9 +161,9 @@ const jsonld = {
   .t-body { padding-top: 48px; padding-bottom: 16px; }
   .t-main { max-width: 880px; display: flex; flex-direction: column; gap: 48px; }
   .t-main h2 { margin: 0 0 16px; font-size: 24px; line-height: 32px; font-weight: 600; }
-  .more { margin: 16px 0 0; font-size: 14px; color: var(--dim); }
+  .more { margin: -12px 0 0; font-size: 14px; color: var(--dim); }
   .more a { color: var(--muted); text-decoration: none; } .more a:hover { color: var(--text); }
-  .syn { margin: 0; font-size: 17px; line-height: 1.65; color: var(--text-2); max-width: 68ch; }
+  .syn { margin: 0; font-size: 16px; line-height: 26px; color: var(--text-2); max-width: 68ch; }
   .cast { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 24px 20px; }
   .cast a, .cast div { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; text-decoration: none; color: var(--text); }
   .cast a:hover .who > span { color: var(--accent); }

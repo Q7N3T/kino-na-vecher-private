@@ -5,6 +5,7 @@ import { curate, popularNow } from '../lib/curate.js';
 import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur, finish } from '../lib/format.js';
 import { icon } from '../lib/icons.js';
 import CollTile from '../components/CollTile.astro';
+import { sticker, stickerFor } from '../lib/stickers.js';
 
 const base = import.meta.env.BASE_URL;
 const { films } = load();
@@ -24,9 +25,9 @@ const colls = COLLECTIONS.slice(0, 4);
       <h1 class="sentence enter" style="--d:1">Сегодня у меня <span class="nw"><button class="slot" id="s-time" data-menu="m-time" aria-haspopup="listbox" aria-expanded="false" aria-controls="m-time"><span class="slot-w">{TIMES[0].word}</span><Fragment set:html={icon('caret', 20)} /></button>,</span> хочется <span class="nw"><button class="slot" id="s-mood" data-menu="m-mood" aria-haspopup="listbox" aria-expanded="false" aria-controls="m-mood"><span class="slot-w">{MOODS[0].word}</span><Fragment set:html={icon('caret', 20)} /></button>.</span> Смотрим <button class="slot" id="s-kind" data-menu="m-kind" aria-haspopup="listbox" aria-expanded="false" aria-controls="m-kind"><span class="slot-w">{KINDS[0].word}</span><Fragment set:html={icon('caret', 20)} /></button></h1>
       <p class="lead enter" style="--d:2">Нажмите на выделенное слово, чтобы поменять.</p>
       <!-- меню выделенных слов: одно открыто за раз, под словом -->
-      <div class="menu" id="m-time" role="listbox" aria-label="Сколько есть времени" hidden>{TIMES.map((t) => <button class="opt" role="option" data-time={t.v} aria-selected={String(t.v === DEF.time)}>{t.chip}</button>)}</div>
-      <div class="menu" id="m-mood" role="listbox" aria-label="Какое настроение" hidden>{[...MOODS, { v: 'any', word: 'неважно' }].map((m) => <button class="opt" role="option" data-mood={m.v} aria-selected={String(m.v === DEF.mood)}>{cap(m.word)}</button>)}</div>
-      <div class="menu" id="m-kind" role="listbox" aria-label="Что смотрим" hidden>{KINDS.map((k) => <button class="opt" role="option" data-kind={k.v} aria-selected={String(k.v === DEF.kind)}>{cap(k.forms[0])}</button>)}</div>
+      <div class="menu" id="m-time" role="listbox" aria-label="Сколько есть времени" hidden>{TIMES.map((t) => <button class="opt" role="option" data-time={t.v} aria-selected={String(t.v === DEF.time)}><Fragment set:html={sticker(stickerFor('time', t.v))} /><span>{t.chip}</span></button>)}</div>
+      <div class="menu" id="m-mood" role="listbox" aria-label="Какое настроение" hidden>{[...MOODS, { v: 'any', word: 'неважно' }].map((m) => <button class="opt" role="option" data-mood={m.v} aria-selected={String(m.v === DEF.mood)}><Fragment set:html={sticker(stickerFor('mood', m.v))} /><span>{cap(m.word)}</span></button>)}</div>
+      <div class="menu" id="m-kind" role="listbox" aria-label="Что смотрим" hidden>{KINDS.map((k) => <button class="opt" role="option" data-kind={k.v} aria-selected={String(k.v === DEF.kind)}><Fragment set:html={sticker(stickerFor('kind', k.v))} /><span>{cap(k.forms[0])}</span></button>)}</div>
     </div>
     <div class="pick enter" id="pick-card" style="--d:3">
       <a class="pick-a" id="pick-a" data-umami-event="Выбор на сегодня" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
@@ -90,11 +91,11 @@ const colls = COLLECTIONS.slice(0, 4);
   .slot[aria-expanded="true"] :global(svg) { transform: rotate(180deg); }
   .menu { position: absolute; z-index: 30; min-width: 224px; display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 16px;
     background: var(--surface-2); border: 1px solid var(--line-2); box-shadow: 0 24px 48px -16px rgba(0, 0, 0, .8); animation: menu-in 300ms var(--ease) both; }
-  .opt { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 12px; border-radius: 8px; border: 0; background: transparent;
+  .opt { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 8px; border: 0; background: transparent;
     font-size: 16px; line-height: 24px; font-weight: 500; text-align: left; cursor: pointer; transition: background 300ms var(--ease), color 300ms var(--ease); }
   .opt:hover, .opt:focus-visible { background: var(--surface); outline: none; }
   .opt[aria-selected="true"] { color: var(--accent); font-weight: 600; }
-  .opt[aria-selected="true"]::after { content: '✓'; }
+  .opt[aria-selected="true"]::after { content: '✓'; margin-left: auto; padding-left: 16px; }
   @keyframes menu-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: none; } }
   .pick { flex: 1 1 320px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 16px; transition: border-color 300ms var(--ease), transform 500ms var(--ease); }
   .pick:hover { border-color: var(--line-2); transform: translateY(-3px); }
