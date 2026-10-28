@@ -10,6 +10,7 @@
 export const PARTNERS = {};
 
 const SEARCH = {
+  117: ['Кинопоиск', 'https://www.kinopoisk.ru/index.php?kp_query={q}'],
   115: ['Okko', 'https://okko.tv/search/{q}'],
   557: ['More TV', 'https://more.tv/search?query={q}'],
   570: ['Premier', 'https://premier.one/search?query={q}'],
@@ -29,7 +30,7 @@ const BY_NAME = {
 };
 // крупные кинотеатры, которых нет в данных JustWatch, — для строки «Поискать в кинотеатрах»
 const ELSEWHERE = [
-  ['kinopoisk', 'Кинопоиск', 'https://www.kinopoisk.ru/index.php?kp_query={q}'],
+  [117],
   ['ivi', 'Иви', 'https://www.ivi.ru/search/?q={q}'],
   [115], ['wink', 'Wink', 'https://wink.ru/search?query={q}'], ['kion', 'KION', 'https://kion.ru/search?text={q}'],
   ['start', 'Start', 'https://start.ru/search?q={q}'], [570], [116], [557],
@@ -38,6 +39,9 @@ const ELSEWHERE = [
 
 const slug = (f) => String(f.o || f.t).toLowerCase().replace(/[^a-z0-9]+/g, '');
 const fill = (t, f) => t.replaceAll('{q}', encodeURIComponent(f.t)).replaceAll('{id}', f.id).replaceAll('{slug}', slug(f));
+
+// название для людей: по-русски, если кинотеатр знаком (TMDB пишет «Kinopoisk», «Amediateka»)
+export const providerName = (providerId, name) => SEARCH[providerId]?.[0] || name;
 
 export function watchLink(f, providerId, name = '') {
   const t = PARTNERS[providerId] || SEARCH[providerId]?.[1] || BY_NAME[name.toLowerCase()];

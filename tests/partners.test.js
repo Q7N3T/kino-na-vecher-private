@@ -38,3 +38,11 @@ test('кинотеатр под незнакомым номером узнаёт
   assert.ok(watchLink(f, 99999, 'Кинопоиск').startsWith('https://www.kinopoisk.ru/'));
   assert.ok(!searchLinks(f, [99999, 'кинопоиск']).some((l) => l.name === 'Кинопоиск'));
 });
+
+test('названия кинотеатров по-русски: TMDB пишет латиницей', async () => {
+  const { providerName } = await import('../src/lib/partners.js');
+  assert.equal(providerName(117, 'Kinopoisk'), 'Кинопоиск');
+  assert.equal(providerName(116, 'Amediateka'), 'Амедиатека');
+  assert.equal(providerName(2555, 'Bloodstream'), 'Bloodstream');
+  assert.ok(watchLink(f, 117).startsWith('https://www.kinopoisk.ru/'));
+});

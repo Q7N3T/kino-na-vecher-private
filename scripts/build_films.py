@@ -376,7 +376,9 @@ def syn_part(tid):
 def write(films):
     out, parts = [], [{} for _ in range(SYN_PARTS)]
     for f in sorted(films.values(), key=lambda f: (-f["v"])):
-        f["m"] = moods(f["g"], f.pop("tg", None))  # жанры TMDB нужны только для настроений, в базу не идут
+        tg = f.pop("tg", None)  # жанры TMDB нужны только для настроений, в базу не идут
+        # без свежих жанров TMDB настроения не пересчитываем: иначе пересборка без TMDB тихо откатит их к правилу «только IMDb»
+        if tg is not None or "m" not in f: f["m"] = moods(f["g"], tg)
         f["genres"] = [GENRES_RU.get(x, x.lower()) for x in f.pop("g")]
         if f["o"] == f["t"]: f.pop("o")
         f.pop("hs", None)
@@ -406,7 +408,6 @@ def load_existing():
     films = {}
     for f in arr:
         f["g"] = [rev.get(x, x) for x in f.pop("genres")]
-        f.pop("m", None)
         f.setdefault("o", f["t"])
         x = syn.get(f["id"]) if f.pop("hs", None) else None
         if isinstance(x, str): x = {"s": x}  # старый формат: только описание

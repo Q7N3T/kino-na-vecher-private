@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import { similar } from '../lib/data.js';
 import { sticker } from '../lib/stickers.js';
 import { cardHTML, MOODS, status, years, kindName, dur, plural, num, votes, tmdbImg, hue, initials } from '../lib/format.js';
-import { watchLink, searchLinks } from '../lib/partners.js';
+import { watchLink, searchLinks, providerName } from '../lib/partners.js';
 
 const { f } = Astro.props;
 const base = import.meta.env.BASE_URL;
@@ -24,7 +24,7 @@ const score = [`IMDb ${f.imdb.toFixed(1)}`, `${votes(f.v)} ${plural(f.v, 'оце
   f.k && `серия ${dur(f.min)}`, total && `весь сериал ≈ ${Math.round(total / 60)} ч`, f.d?.length && `${f.d.length > 1 ? 'режиссёры' : 'режиссёр'} ${f.d.join(', ')}`].filter(Boolean);
 // главная кнопка — смотреть сразу, если есть где; иначе — «Смотрю сегодня»
 const nowKind = f.wp && ['s', 'f', 'a'].find((k) => f.wp[k]?.length);
-const go = nowKind && { pid: f.wp[nowKind][0][0], name: f.wp[nowKind][0][1], free: nowKind !== 's' };
+const go = nowKind && { pid: f.wp[nowKind][0][0], name: providerName(f.wp[nowKind][0][0], f.wp[nowKind][0][1]), free: nowKind !== 's' };
 // поискать в кинотеатрах, которых нет в «Где посмотреть» (у двух третей тайтлов данных JustWatch нет вовсе)
 const elsewhere = searchLinks(f, watchGroups.flatMap((g) => g.items.flatMap(([pid, name]) => [pid, name.toLowerCase()])));
 const jsonld = {
@@ -75,7 +75,7 @@ const jsonld = {
                       <li><a href={watchLink(f, pid, name)} rel="noopener sponsored" target="_blank"
                         data-umami-event="Где посмотреть" data-umami-event-provider={name} data-umami-event-type={g.label} data-umami-event-title={f.t}>
                         {logo && <img src={tmdbImg(logo, 64, 'w92')} alt="" width="28" height="28" loading="lazy" onerror="knvImg(this)" />}
-                        <span>{name}</span>
+                        <span>{providerName(pid, name)}</span>
                       </a></li>
                     ))}
                   </ul>

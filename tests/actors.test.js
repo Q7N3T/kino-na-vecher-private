@@ -21,8 +21,13 @@ test('годы и лучший фильм — по всем ролям, лент
 
 test('где смотреть сразу: подписка, потом бесплатно, потом с рекламой; аренда и покупка — нет', async () => {
   const { watchNow } = await import('../src/lib/data.js');
-  assert.deepEqual(watchNow({ s: [[1, 'Okko', '/o.png']], f: [[2, 'Иви', '/i.png']] }), ['Okko', '/o.png', 's']);
-  assert.deepEqual(watchNow({ a: [[3, 'Wink', '/w.png']], b: [[4, 'Apple TV Store', '/a.png']] }), ['Wink', '/w.png', 'a']);
+  assert.deepEqual(watchNow({ s: [[9001, 'Okko', '/o.png']], f: [[9002, 'Иви', '/i.png']] }), ['Okko', '/o.png', 's']);
+  assert.deepEqual(watchNow({ a: [[9003, 'Wink', '/w.png']], b: [[9004, 'Apple TV Store', '/a.png']] }), ['Wink', '/w.png', 'a']);
   assert.equal(watchNow({ r: [[4, 'Apple TV Store', '/a.png']] }), 0);
   assert.equal(watchNow(null), 0);
+});
+
+test('где смотреть сразу — название по-русски', async () => {
+  const { watchNow } = await import('../src/lib/data.js');
+  assert.deepEqual(watchNow({ s: [[117, 'Kinopoisk', '/k.png']] }), ['Кинопоиск', '/k.png', 's']);
 });

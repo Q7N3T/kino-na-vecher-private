@@ -2,6 +2,7 @@
 // один раз за сборку и раздаёт страницам.
 import fs from 'node:fs';
 import path from 'node:path';
+import { providerName } from './partners.js';
 
 // сборка запускается из корня проекта (npm run build); путь от файла после сборки указывал бы в dist/
 const ROOT = process.cwd();
@@ -32,7 +33,7 @@ export function actorSearchRow(a) {
 // (аренда и покупка — на странице тайтла). [название, логотип, вид] или 0.
 export function watchNow(wp) {
   const kind = wp && ['s', 'f', 'a'].find((k) => wp[k]?.length);
-  return kind ? [wp[kind][0][1], wp[kind][0][2], kind] : 0;
+  return kind ? [providerName(wp[kind][0][0], wp[kind][0][1]), wp[kind][0][2], kind] : 0;
 }
 
 let cache;
