@@ -1,4 +1,4 @@
-// Браузерная часть: индекс всех фильмов и сериалов, фильтры, «Хочу посмотреть».
+// Браузерная часть: индекс всех фильмов и сериалов, фильтры, «Мой список».
 import { cardHTML } from './format.js';
 
 export const base = document.body.dataset.base || '/';
@@ -48,7 +48,7 @@ export function pager(grid, button, left, list, { first = 18, step = 24, time = 
   more(first);
 }
 
-// «Хочу посмотреть» — пока в браузере; с аккаунтами переедет на сервер
+// «Мой список» — пока в браузере; с аккаунтами переедет на сервер
 const KEY = 'knv-watch';
 export function watchlist() {
   try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }

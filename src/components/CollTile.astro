@@ -1,0 +1,25 @@
+---
+// Плитка подборки: название, подпись и стопка из трёх постеров — что внутри, а не сколько.
+import { collection } from '../lib/data.js';
+import { tmdbImg, hue } from '../lib/format.js';
+interface Props { c: { slug: string; title: string; sub: string; hue: number } }
+const { c } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const top = collection(c, 30).filter((f) => f.p).slice(0, 3);
+---
+<a class="coll" href={`${base}podborki/${c.slug}/`} style={`--h:${c.hue}`}>
+  <span class="stack" aria-hidden="true">
+    {top.map((f, i) => <span class="st-p" style={`--k:${i};--h:${hue(f.id)}`}><img src={tmdbImg(f.p, 120)} alt="" loading="lazy" onerror="knvImg(this)" /></span>)}
+  </span>
+  <b>{c.title}</b><span>{c.sub}</span>
+</a>
+<style>
+  .coll { position: relative; overflow: hidden; padding-right: 160px; }
+  .stack { position: absolute; right: 24px; top: 50%; width: 120px; height: 96px; transform: translateY(-50%); }
+  .st-p { position: absolute; top: 0; left: calc(var(--k) * 32px); width: 64px; aspect-ratio: 2 / 3; border-radius: 8px; overflow: hidden;
+    background: hsl(var(--h) 26% 26%); box-shadow: 0 8px 24px -8px rgba(0, 0, 0, .8); transform: rotate(calc((var(--k) - 1) * 6deg)) translateY(calc(var(--k) * 4px));
+    transition: transform 500ms var(--ease); }
+  .st-p img { width: 100%; height: 100%; object-fit: cover; }
+  .coll:hover .st-p { transform: rotate(calc((var(--k) - 1) * 10deg)) translateY(calc(var(--k) * 4px - 4px)); }
+  @media (max-width: 760px) { .coll { padding-right: 144px; } .stack { right: 16px; } }
+</style>

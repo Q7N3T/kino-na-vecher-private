@@ -12,7 +12,7 @@ const top = actors.slice(0, 120);
     <ul class="people">
       {top.map((a, i) => (
         <li style={`--i:${Math.min(i, 12)}`}><a href={`${base}akter/${a.slug}/`}>
-          <span class="face" style={`--h:${hue(a.n)}`}>{a.p && <img src={tmdbImg(a.p, 200, 'w185')} alt="" loading="lazy" onerror="knvImg(this)" />}<b>{initials(a.n)}</b></span>
+          <span class="face" style={`--h:${hue(a.n)}`}>{a.p && <img src={tmdbImg(a.p, 200, 'w185')} alt="" loading="lazy" onerror="knvImg(this)" />}<b aria-hidden="true">{initials(a.n)}</b></span>
           <span class="nm">{a.n}</span><small>{a.roles.length} {plural(a.roles.length, 'роль', 'роли', 'ролей')}</small>
         </a></li>
       ))}

@@ -9,10 +9,10 @@ const base = import.meta.env.BASE_URL;
 const fullTitle = title ? `${title} — Кино на вечер` : 'Кино на вечер — что посмотреть сегодня';
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const nav = [
-  ['', 'Главная'], ['filmy/', 'Фильмы'], ['serialy/', 'Сериалы'], ['podborki/', 'Подборки'], ['aktery/', 'Актёры'], ['izbrannoe/', 'Хочу посмотреть'],
+  ['', 'Главная'], ['filmy/', 'Фильмы'], ['serialy/', 'Сериалы'], ['podborki/', 'Подборки'], ['izbrannoe/', 'Мой список'],
 ];
 const tabs = [
-  ['', 'Главная', 'house'], ['filmy/', 'Фильмы', 'film'], ['serialy/', 'Сериалы', 'tv'], ['poisk/', 'Поиск', 'search'], ['izbrannoe/', 'Список', 'bookmark'],
+  ['', 'Главная', 'house'], ['filmy/', 'Фильмы', 'film'], ['serialy/', 'Сериалы', 'tv'], ['poisk/', 'Поиск', 'search'], ['izbrannoe/', 'Мой список', 'bookmark'],
 ];
 const CONTACT = '';
 // аналитика Umami: без cookie и без личных данных. Включается переменной репозитория UMAMI_ID
@@ -111,7 +111,7 @@ const UMAMI_SRC = import.meta.env.PUBLIC_UMAMI_SRC || 'https://cloud.umami.is/sc
       <a href={`${base}filmy/`}>Фильмы</a>
       <a href={`${base}o-proekte/`}>О проекте</a>
       <a href={`${base}serialy/`}>Сериалы</a>
-      {CONTACT ? <a href={`mailto:${CONTACT}`}>Сотрудничество: {CONTACT}</a> : <span style="color: var(--dim)">Сотрудничество: скоро</span>}
+      {CONTACT && <a href={`mailto:${CONTACT}`}>Сотрудничество: {CONTACT}</a>}
       <a href={`${base}podborki/`}>Подборки</a>
       <a href={`${base}aktery/`}>Актёры</a>
       <a href={`${base}konfidencialnost/`}>Конфиденциальность</a>

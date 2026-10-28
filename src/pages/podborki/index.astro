@@ -1,14 +1,14 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { COLLECTIONS, collection } from '../../lib/data.js';
+import { COLLECTIONS } from '../../lib/data.js';
+import CollTile from '../../components/CollTile.astro';
 const base = import.meta.env.BASE_URL;
-const colls = COLLECTIONS.map((c) => ({ ...c, n: collection(c, 100000).length }));
 ---
 <Base title="Подборки" section="podborki/" description="Готовые подборки фильмов и сериалов: комедии на полтора часа, сериалы на один вечер, новинки, классика.">
   <div class="wrap">
     <header class="page-h"><h1>Подборки</h1><p>Собираются автоматически из базы и обновляются каждую неделю.</p></header>
     <div class="colls" style="padding: 32px 0 24px">
-      {colls.map((c) => <a class="coll" href={`${base}podborki/${c.slug}/`} style={`--h:${c.hue}`}><small>{c.n.toLocaleString('ru-RU')}</small><b>{c.title}</b><span>{c.sub}</span></a>)}
+      {COLLECTIONS.map((c) => <CollTile c={c} />)}
     </div>
   </div>
 </Base>

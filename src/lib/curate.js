@@ -133,12 +133,12 @@ export function curate(list, { time = 999, mood = 'any', prof = null, day = '', 
 }
 
 // Из кого выбирается выбор дня: до четырёх лучших находок (или «по вкусу») с рейтингом от 7,2.
-// Уже выбранное раньше не предлагаем; открытое — только если отложено в «Хочу посмотреть».
+// Уже выбранное раньше не предлагаем; открытое — только если отложено в «Мой список».
 export function dailyCandidates(list, { time = 999, mood = 'any', prof = null, watch = [], day = '' } = {}) {
   const wl = new Set(watch);
   const seen = prof?.seen || new Set(), picked = prof?.picked || new Set();
   const cand = list.filter((f) => f.imdb >= 7.2 && !picked.has(f.id) && (wl.has(f.id) || !seen.has(f.id)));
-  // curate прячет всё открытое раньше — отложенное в «Хочу посмотреть» для выбора дня открытым не считаем
+  // curate прячет всё открытое раньше — отложенное в «Мой список» для выбора дня открытым не считаем
   const forPick = prof && { ...prof, seen: new Set([...seen].filter((id) => !wl.has(id) || picked.has(id))) };
   const { items } = curate(cand, { time, mood, prof: forPick, day: day + '|pick' });
   const best = items.filter((x) => x.why === 'gem' || x.why === 'taste');

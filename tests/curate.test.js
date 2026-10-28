@@ -78,7 +78,7 @@ function withGem() {
   return { list: [...list, gem], gem };
 }
 
-test('выбор дня: открытый раньше, но отложенный в «Хочу посмотреть» фильм — среди кандидатов', () => {
+test('выбор дня: открытый раньше, но отложенный в «Мой список» фильм — среди кандидатов', () => {
   const { list, gem } = withGem();
   const from = dailyCandidates(list, { time: 130, mood: 'laugh', prof: taste([gem.id]), watch: [gem.id] });
   assert.ok(from.some((f) => f.id === gem.id));
@@ -89,7 +89,7 @@ test('выбор дня: открытый и не отложенный — не 
   assert.ok(!dailyCandidates(list, { time: 130, mood: 'laugh', prof: taste([gem.id]) }).some((f) => f.id === gem.id));
 });
 
-test('выбор дня: уже выбранный раньше не возвращается, даже из «Хочу посмотреть»', () => {
+test('выбор дня: уже выбранный раньше не возвращается, даже из «Мой список»', () => {
   const { list, gem } = withGem();
   const from = dailyCandidates(list, { time: 130, mood: 'laugh', prof: taste([gem.id], [gem.id]), watch: [gem.id] });
   assert.ok(from.length > 0 && !from.some((f) => f.id === gem.id));
