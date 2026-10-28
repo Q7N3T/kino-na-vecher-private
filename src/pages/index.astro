@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { load, COLLECTIONS, collection } from '../lib/data.js';
 import { curate, popularNow } from '../lib/curate.js';
-import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur, num, finish } from '../lib/format.js';
+import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur, num, finish, plural } from '../lib/format.js';
 import { icon } from '../lib/icons.js';
 
 const base = import.meta.env.BASE_URL;
@@ -22,17 +22,13 @@ const nSeries = films.filter((f) => f.k).length;
   <section class="wrap hero">
     <div class="hero-main">
       <p class="eyebrow enter" style="--d:0">Сейчас <span data-now></span> · подберём под ваш вечер</p>
-      <h1 class="sentence enter" style="--d:1">Сегодня у меня <span class="nw"><button class="slot" data-focus="g-time" id="s-time">{TIMES[0].word}</button>,</span> хочется <span class="nw"><button class="slot" data-focus="g-mood" id="s-mood">{MOODS[0].word}</button>.</span> Смотрим <button class="slot" data-focus="g-kind" id="s-kind">{KINDS[0].word}</button></h1>
-      <p class="lead enter" style="--d:2">Скажите, сколько у вас времени и какое настроение. Подберём фильм или сериал и покажем, во сколько будет финал.</p>
-      <div class="pickers enter" style="--d:3">
-        <div><p class="picker-l" id="l-time">Сколько есть времени</p>
-          <div class="chips three" role="group" aria-labelledby="l-time" id="g-time">{TIMES.map((t) => <button class="chip" data-time={t.v} aria-pressed={String(t.v === DEF.time)} set:html={t.chip.replace(/^Около /, '<span class="m-hide">Около </span>')}></button>)}</div></div>
-        <div><p class="picker-l" id="l-mood">Какое настроение</p>
-          <div class="chips moods" role="group" aria-labelledby="l-mood" id="g-mood">{[...MOODS, { v: 'any', word: 'неважно' }].map((m) => <button class="chip" data-mood={m.v} aria-pressed={String(m.v === DEF.mood)}>{cap(m.word)}</button>)}</div></div>
-        <div><p class="picker-l" id="l-kind">Что смотрим</p>
-          <div class="chips three" role="group" aria-labelledby="l-kind" id="g-kind">{KINDS.map((k) => <button class="chip" data-kind={k.v} aria-pressed={String(k.v === DEF.kind)}>{k.chip}</button>)}</div></div>
-      </div>
-      <p class="proof enter" style="--d:4"><b>{num(films.length - nSeries)}</b> фильмов и <b>{num(nSeries)}</b> сериалов с рейтингом IMDb · база обновляется каждую неделю</p>
+      <h1 class="sentence enter" style="--d:1">Сегодня у меня <span class="nw"><button class="slot" id="s-time" data-menu="m-time" aria-haspopup="listbox" aria-expanded="false" aria-controls="m-time"><span class="slot-w">{TIMES[0].word}</span><Fragment set:html={icon('caret', 20)} /></button>,</span> хочется <span class="nw"><button class="slot" id="s-mood" data-menu="m-mood" aria-haspopup="listbox" aria-expanded="false" aria-controls="m-mood"><span class="slot-w">{MOODS[0].word}</span><Fragment set:html={icon('caret', 20)} /></button>.</span> Смотрим <button class="slot" id="s-kind" data-menu="m-kind" aria-haspopup="listbox" aria-expanded="false" aria-controls="m-kind"><span class="slot-w">{KINDS[0].word}</span><Fragment set:html={icon('caret', 20)} /></button></h1>
+      <p class="lead enter" style="--d:2">Нажмите на выделенные слова: подберём фильм или сериал под ваш вечер и покажем, во сколько закончите.</p>
+      <!-- меню выделенных слов: одно открыто за раз, под словом -->
+      <div class="menu" id="m-time" role="listbox" aria-label="Сколько есть времени" hidden>{TIMES.map((t) => <button class="opt" role="option" data-time={t.v} aria-selected={String(t.v === DEF.time)}>{t.chip}</button>)}</div>
+      <div class="menu" id="m-mood" role="listbox" aria-label="Какое настроение" hidden>{[...MOODS, { v: 'any', word: 'неважно' }].map((m) => <button class="opt" role="option" data-mood={m.v} aria-selected={String(m.v === DEF.mood)}>{cap(m.word)}</button>)}</div>
+      <div class="menu" id="m-kind" role="listbox" aria-label="Что смотрим" hidden>{KINDS.map((k) => <button class="opt" role="option" data-kind={k.v} aria-selected={String(k.v === DEF.kind)}>{cap(k.forms[0])}</button>)}</div>
+      <p class="proof enter" style="--d:3"><b>{num(films.length - nSeries)}</b> {plural(films.length - nSeries, 'фильм', 'фильма', 'фильмов')} и <b>{num(nSeries)}</b> {plural(nSeries, 'сериал', 'сериала', 'сериалов')} с рейтингом IMDb · база обновляется каждую неделю</p>
     </div>
     <div class="pick enter" id="pick-card" style="--d:3">
       <a class="pick-a" id="pick-a" data-umami-event="Выбор на сегодня" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
@@ -105,8 +101,17 @@ const nSeries = films.filter((f) => f.k).length;
   .slot { clip-path: inset(-.15em -.3em 0 -.3em); }
   .slot :global(.sv) { display: inline-block; animation: flip-in 500ms var(--ease) both; }
   @keyframes flip-in { from { opacity: 0; transform: translateY(70%); } to { opacity: 1; transform: none; } }
-  .pickers { display: grid; gap: 16px; margin-top: 32px; }
-  .picker-l { margin: 0 0 8px; font-size: 14px; color: var(--dim); }
+  .hero-main { position: relative; }
+  .slot :global(svg) { width: .4em; height: .4em; margin-left: .08em; vertical-align: .12em; transition: transform 500ms var(--ease); }
+  .slot[aria-expanded="true"] :global(svg) { transform: rotate(180deg); }
+  .menu { position: absolute; z-index: 30; min-width: 224px; display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 16px;
+    background: var(--surface-2); border: 1px solid var(--line-2); box-shadow: 0 24px 48px -16px rgba(0, 0, 0, .8); animation: menu-in 300ms var(--ease) both; }
+  .opt { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 12px; border-radius: 8px; border: 0; background: transparent;
+    font-size: 16px; line-height: 24px; font-weight: 500; text-align: left; cursor: pointer; transition: background 300ms var(--ease), color 300ms var(--ease); }
+  .opt:hover, .opt:focus-visible { background: var(--surface); outline: none; }
+  .opt[aria-selected="true"] { color: var(--accent); font-weight: 600; }
+  .opt[aria-selected="true"]::after { content: '✓'; }
+  @keyframes menu-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: none; } }
   .pick { flex: 1 1 320px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 16px; transition: border-color 300ms var(--ease), transform 500ms var(--ease); }
   .pick:hover { border-color: var(--line-2); transform: translateY(-3px); }
   .pick-a { display: flex; gap: 16px; align-items: center; text-decoration: none; color: var(--text); }
@@ -148,8 +153,6 @@ const nSeries = films.filter((f) => f.k).length;
     .proof { margin-top: 16px; font-size: 12px; line-height: 16px; }
     .hero { padding-top: 24px; gap: 24px; }
     .eyebrow { margin-bottom: 12px; }
-    .pickers { margin-top: 24px; gap: 12px; }
-    .picker-l { font-size: 12px; margin-bottom: 8px; }
     .pick { padding: 16px; gap: 12px; border-radius: 16px; }
     .pick-a { gap: 16px; }
     .pick-f { padding-top: 12px; }
@@ -173,7 +176,7 @@ const nSeries = films.filter((f) => f.k).length;
 
   // слово во фразе: изменённое перелистывается снизу вверх, как на табло
   function put(id: string, word: string, changed: string) {
-    const el = $(id);
+    const el = $(id).querySelector<HTMLElement>('.slot-w')!;
     if (id !== changed) { if (el.textContent !== word) el.textContent = word; return; }
     el.innerHTML = `<span class="sv">${word}</span>`;
   }
@@ -182,9 +185,9 @@ const nSeries = films.filter((f) => f.k).length;
     put('s-time', TIMES.find((t) => t.v === state.time)!.word, changed);
     put('s-mood', state.mood === 'any' ? 'чего угодно' : MOODS.find((m) => m.v === state.mood)!.word, changed);
     put('s-kind', KINDS.find((k) => k.v === state.kind)!.word, changed);
-    document.querySelectorAll<HTMLButtonElement>('[data-time]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.time! === state.time)));
-    document.querySelectorAll<HTMLButtonElement>('[data-mood]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mood === state.mood)));
-    document.querySelectorAll<HTMLButtonElement>('[data-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === state.kind)));
+    document.querySelectorAll<HTMLButtonElement>('.opt[data-time]').forEach((b) => b.setAttribute('aria-selected', String(+b.dataset.time! === state.time)));
+    document.querySelectorAll<HTMLButtonElement>('.opt[data-mood]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mood === state.mood)));
+    document.querySelectorAll<HTMLButtonElement>('.opt[data-kind]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.kind === state.kind)));
   }
 
   async function update() {
@@ -281,7 +284,7 @@ const nSeries = films.filter((f) => f.k).length;
     if (d.time) { state.time = +d.time; changed = 's-time'; }
     else if (d.mood) { state.mood = d.mood; changed = 's-mood'; }
     else if (d.kind) { state.kind = d.kind; changed = 's-kind'; }
-    else if (d.focus) { ($(d.focus).querySelector('[aria-pressed="true"]') as HTMLElement)?.focus(); return; }
+    else if (d.menu) { menuSlot === b ? closeMenu(true) : openMenu(b); return; }
     else if (d.tab) {
       popTab = d.tab;
       document.querySelectorAll<HTMLElement>('[data-tab]').forEach((t) => t.setAttribute('aria-pressed', String(t === b)));
@@ -291,9 +294,39 @@ const nSeries = films.filter((f) => f.k).length;
     else if (b.id === 'pick-back') { showPick(daily, dailyLabel, false); return; }
     else return;
     try { sessionStorage.setItem('knv-pick', JSON.stringify(state)); } catch {}
+    closeMenu(true);
     label(changed);
     update();
   });
+
+  // меню выделенного слова: открывается под словом, стрелки ходят по вариантам, Esc закрывает
+  let menuSlot: HTMLElement | null = null;
+  function openMenu(slot: HTMLElement) {
+    closeMenu(false);
+    const m = $(slot.dataset.menu!), host = slot.closest('.hero-main')!.getBoundingClientRect(), r = slot.getBoundingClientRect();
+    m.hidden = false;
+    m.style.left = Math.max(0, Math.min(r.left - host.left, host.width - m.offsetWidth)) + 'px';
+    m.style.top = r.bottom - host.top + 8 + 'px';
+    slot.setAttribute('aria-expanded', 'true');
+    menuSlot = slot;
+    (m.querySelector<HTMLElement>('[aria-selected="true"]') || m.querySelector<HTMLElement>('.opt'))!.focus();
+  }
+  function closeMenu(focusSlot: boolean) {
+    if (!menuSlot) return;
+    $(menuSlot.dataset.menu!).hidden = true;
+    menuSlot.setAttribute('aria-expanded', 'false');
+    if (focusSlot) menuSlot.focus();
+    menuSlot = null;
+  }
+  document.addEventListener('pointerdown', (e) => {
+    if (menuSlot && !(e.target as HTMLElement).closest('.menu, .slot')) closeMenu(false);
+  });
+  document.querySelectorAll<HTMLElement>('.menu').forEach((m) => m.addEventListener('keydown', (e) => {
+    const opts = [...m.querySelectorAll<HTMLElement>('.opt')], i = opts.indexOf(document.activeElement as HTMLElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); opts[(i + (e.key === 'ArrowDown' ? 1 : opts.length - 1)) % opts.length].focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeMenu(true); }
+    else if (e.key === 'Tab') closeMenu(false);
+  }));
 
   // «Популярное сейчас»: только активная вкладка, без того, что уже есть в «Подходит на сегодня»
   let popTab = 'all';
