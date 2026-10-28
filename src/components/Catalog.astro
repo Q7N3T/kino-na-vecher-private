@@ -38,7 +38,7 @@ const DECADES = [['', 'Все годы'], ['2020', '2020-е'], ['2010', '2010-е
         <span class="count" id="count" aria-live="polite"></span>
       </div>
     </form>
-    <div class="grid" id="grid" set:html={first.map((f, i) => cardHTML(f, base, i)).join('')}></div>
+    <div class="grid" id="grid" set:html={first.map((f, i) => cardHTML(f, base, { i })).join('')}></div>
     <div class="load"><button class="btn ghost" id="more" hidden>Показать ещё</button><small id="left"></small></div>
   </div>
 </Base>
@@ -80,7 +80,8 @@ const DECADES = [['', 'Все годы'], ['2020', '2020-е'], ['2010', '2010-е
     document.getElementById('count')!.textContent = n.toLocaleString('ru-RU') + ' ' + (isS ? plural(n, 'сериал', 'сериала', 'сериалов') : plural(n, 'фильм', 'фильма', 'фильмов'));
     const grid = document.getElementById('grid')!;
     if (!n) { grid.innerHTML = '<div class="empty"><h2>Ничего не нашлось</h2><p>Попробуйте убрать часть фильтров.</p></div>'; document.getElementById('more')!.hidden = true; document.getElementById('left')!.textContent = ''; }
-    else pager(grid, document.getElementById('more')!, document.getElementById('left'), list);
+    // задано время — у сериалов видно, сколько серий успеть; «любое» (999) — только длительность серии
+    else pager(grid, document.getElementById('more')!, document.getElementById('left'), list, { time: st.time < 999 ? st.time : 0 });
     if (push) {
       const q = new URLSearchParams();
       if (st.time !== 999) q.set('time', String(st.time));

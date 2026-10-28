@@ -118,7 +118,7 @@ import Base from '../../layouts/Base.astro';
       </div>
       <a class="btn ghost spot-all" href="${url}">Вся фильмография<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></svg></a>`;
     document.getElementById('spot-h')!.innerHTML = 'Фильмография <small>по популярности</small>';
-    document.getElementById('spot-grid')!.innerHTML = films.slice(0, 12).map((f: any, i: number) => cardHTML(f, base, i)).join('');
+    document.getElementById('spot-grid')!.innerHTML = films.slice(0, 12).map((f: any, i: number) => cardHTML(f, base, { i })).join('');
     sec.hidden = false;
     sec.classList.remove('in'); void sec.offsetWidth; sec.classList.add('in');
   }

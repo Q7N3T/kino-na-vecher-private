@@ -45,9 +45,46 @@ test('оценки коротко', () => {
   assert.equal(votes(800), '800');
 });
 
+const movie = { id: 'tt1', slug: 'x', t: 'Фильм', y: 2020, min: 100, imdb: 7.5, m: [], genres: [] };
+const show = { id: 'tt2', slug: 'y', t: 'Сериал', k: 's', y: 2015, ye: 2019, ss: 4, ep: 40, min: 45, imdb: 8.6, ts: 'Ended', m: [], genres: [] };
+const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
 test('карточка не вставляет название как разметку', () => {
-  const html = cardHTML({ id: 'tt1', slug: 'x', t: '<b>Взлом</b>', y: 2020, min: 100, imdb: 7.5, m: [], genres: [] }, '/');
+  const html = cardHTML({ ...movie, t: '<b>Взлом</b>' }, '/');
   assert.ok(!html.includes('<b>Взлом</b>'));
   assert.ok(html.includes('&lt;b&gt;Взлом&lt;/b&gt;'));
   assert.ok(html.includes('href="/film/x/"'));
+});
+
+test('фильм: рейтинг, а время финала — отдельным блоком, который прячется, пока не посчитан', () => {
+  const html = cardHTML(movie, '/');
+  assert.match(html, /<span class="fin">[^<]*финал в <b data-end="100"><\/b><\/span>/);
+  assert.ok(text(html).includes('IMDb 7.5'));
+  assert.ok(!/финал в\s*$/.test(text(html).split('IMDb')[0]), 'никакого «финал в» перед рейтингом');
+});
+
+test('сериал при заданном времени: сколько серий успеете и когда закончите', () => {
+  assert.ok(text(cardHTML(show, '/', { time: 105 })).includes('успеете 2 серии, закончите в'));
+  assert.ok(cardHTML(show, '/', { time: 105 }).includes('data-end="90"'));
+  assert.ok(text(cardHTML(show, '/', { time: 40 })).includes('успеете 1 серию'), 'хотя бы одна');
+  assert.ok(text(cardHTML(show, '/', { time: 999 })).includes('успеете 5 серий'), 'весь вечер — четыре часа');
+  assert.ok(text(cardHTML({ ...show, ep: 3 }, '/', { time: 999 })).includes('успеете 3 серии'), 'не больше, чем вышло');
+});
+
+test('сериал без заданного времени: длительность серии, без «финала»', () => {
+  const t = text(cardHTML(show, '/'));
+  assert.ok(t.includes('серия 45 мин'));
+  assert.ok(!t.includes('финал') && !t.includes('успеете'));
+});
+
+test('одна метка на постере: «почему в подборке» важнее статуса, статус — в мелкой строке', () => {
+  const html = cardHTML(show, '/', { why: 'Находка' });
+  assert.equal((html.match(/class="(why|badge)/g) || []).length, 1);
+  assert.ok(html.includes('class="why"'));
+  assert.ok(text(html).includes('Сериал · 4 сезона · завершён'));
+  assert.equal((cardHTML(show, '/').match(/class="(why|badge)/g) || []).length, 0);
+});
+
+test('заглушка постера не читается скринридером второй раз', () => {
+  assert.match(cardHTML(movie, '/'), /<span class="ph" aria-hidden="true">/);
 });

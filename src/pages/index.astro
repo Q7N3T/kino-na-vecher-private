@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { load, COLLECTIONS, collection } from '../lib/data.js';
 import { curate } from '../lib/curate.js';
-import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur, num } from '../lib/format.js';
+import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur, num, finish } from '../lib/format.js';
 import { icon } from '../lib/icons.js';
 
 const base = import.meta.env.BASE_URL;
@@ -68,7 +68,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
           <small id="pick-l">Выбор на сегодня</small>
           <b id="pick-t">{tonight[0].t}</b>
           <span id="pick-m">{tonight[0].k ? `${kindName(tonight[0])} · ${seasons(tonight[0])} · серия ${dur(tonight[0].min)}` : `${tonight[0].y} · ${dur(tonight[0].min)} · IMDb ${tonight[0].imdb.toFixed(1)}`}</span>
-          <span class="pick-e" id="pick-e">Финал в <span data-end={tonight[0].min}></span></span>
+          <span class="pick-e" id="pick-e"><span id="pick-pre">{cap(finish(tonight[0], DEF.time).text)}</span> <span data-end={finish(tonight[0], DEF.time).min}></span></span>
         </span>
       </a>
       <div class="pick-f">
@@ -86,7 +86,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
         <a class="more-link" id="tonight-all" href={`${base}filmy/`}>Все →</a>
       </div>
     </div>
-    <div class="grid row" id="tonight" set:html={curated.map((x, i) => cardHTML(x.f, base, i, WHY[x.why])).join('')}></div>
+    <div class="grid row" id="tonight" set:html={curated.map((x, i) => cardHTML(x.f, base, { i, why: WHY[x.why], time: DEF.time })).join('')}></div>
   </section>
 
   <section class="sec wrap tagline reveal" aria-label="Коротко о сервисе">
@@ -125,7 +125,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
         <button class="chip" data-tab="series" aria-pressed="false">Сериалы</button>
       </div>
     </div>
-    {Object.entries(popular).map(([k, l]) => <div class="grid row" data-pop={k} hidden={k !== 'all'} set:html={l.map((f, i) => cardHTML(f, base, i)).join('')}></div>)}
+    {Object.entries(popular).map(([k, l]) => <div class="grid row" data-pop={k} hidden={k !== 'all'} set:html={l.map((f, i) => cardHTML(f, base, { i })).join('')}></div>)}
   </section>
 
   <section class="sec wrap faq reveal" aria-labelledby="h-faq">
@@ -172,6 +172,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
   .pick-b b { font-size: 20px; font-weight: 600; line-height: 1.25; }
   .pick-b > span { font-size: 14px; color: var(--muted); }
   .pick-b .pick-e { color: var(--accent); }
+  .pick-b .pick-e:has([data-end]:empty) { visibility: hidden; } /* время ещё не посчитано */
   .pick-f { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
   .pick-n { font-size: 12px; color: var(--dim); min-width: 0; }
   .back { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px 0 12px; border-radius: 9999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color 300ms var(--ease), color 300ms var(--ease); }
@@ -270,7 +271,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
   import { loadIndex, matches, base, watchlist } from '../lib/client.js';
   import { profile } from '../lib/taste.js';
   import { curate, dailyPick } from '../lib/curate.js';
-  import { cardHTML, MOODS, TIMES, KINDS, plural, dur, kindName, seasons, tmdbImg, hue } from '../lib/format.js';
+  import { cardHTML, MOODS, TIMES, KINDS, plural, dur, kindName, seasons, tmdbImg, hue, finish, cap } from '../lib/format.js';
 
   const state = { time: 105, mood: 'laugh', kind: 'any' };
   // метка на постере: почему тайтл в подборке
@@ -306,7 +307,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     $('tonight-n').textContent = list.length ? list.length.toLocaleString('ru-RU') + ' ' + plural(list.length, ...forms) + (prof.n ? ' · с учётом ваших вкусов' : '') : '';
     dedupe(new Set(list.slice(0, 12).map((f) => f.id)));
     $('tonight').innerHTML = list.length
-      ? items.map((x, i) => cardHTML(x.f, base, i, WHY[x.why])).join('')
+      ? items.map((x, i) => cardHTML(x.f, base, { i, why: WHY[x.why], time: state.time })).join('')
       : '<div class="empty"><h2>Под такой вечер ничего нет</h2><p>Дайте себе чуть больше времени или выберите другое настроение.</p></div>';
     const q = new URLSearchParams({ time: String(state.time), mood: state.mood });
     $('tonight-all').setAttribute('href', `${base}${state.kind === 'series' ? 'serialy' : 'filmy'}/?${q}`);
@@ -326,8 +327,9 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     $('pick-t').textContent = f.t;
     $('pick-m').textContent = f.k ? `${kindName(f)} · ${seasons(f)} · серия ${dur(f.min)}` : `${f.y} · ${dur(f.min)} · IMDb ${f.imdb.toFixed(1)}`;
     // время финала меняем в том же элементе — тогда цифры перещёлкиваются, а не появляются заново
-    const end = $('pick-e').querySelector<HTMLElement>('[data-end]');
-    if (end) end.dataset.end = String(f.min); else $('pick-e').innerHTML = `Финал в <span data-end="${f.min}"></span>`;
+    const e = finish(f, state.time)!; // время на главной задано всегда
+    $('pick-pre').textContent = cap(e.text);
+    ($('pick-e').querySelector('[data-end]') as HTMLElement).dataset.end = String(e.min);
     $('pick-poster').innerHTML = f.p ? `<img src="${tmdbImg(f.p, 200)}" alt="" onerror="knvImg(this)">` : '';
     $('pick-poster').style.setProperty('--h', String(hue(f.id)));
     $('pick-n').hidden = rnd;

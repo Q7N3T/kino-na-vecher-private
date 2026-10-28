@@ -102,6 +102,9 @@ p, li, dd { text-wrap: pretty; }
 .card-m { font-size: 12px; color: var(--dim); }
 .card-e { font-size: 12px; color: var(--muted); }
 .card-e b { color: var(--text); font-weight: 500; }
+/* «финал в …» — только когда браузер посчитал время: без JS и для поисковиков фраза не висит оборванной */
+.fin:has(> [data-end]:empty) { display: none; }
+.card-m .st.on { color: var(--live); }
 .badge { position: absolute; top: 12px; left: 12px; z-index: 2; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; line-height: 1; padding: 8px 8px; border-radius: 9999px; background: rgba(19, 18, 9, .84); backdrop-filter: blur(6px); color: var(--muted); }
 .badge i, .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
 .badge.on { color: var(--live); }

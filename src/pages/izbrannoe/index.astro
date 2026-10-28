@@ -31,6 +31,6 @@ const base = import.meta.env.BASE_URL;
   if (!ids.length) document.getElementById('empty')!.hidden = false;
   else loadIndex().then((all) => {
     const by = new Map(all.map((f: any) => [f.id, f]));
-    document.getElementById('grid')!.innerHTML = ids.map((id) => by.get(id)).filter(Boolean).map((f, i) => cardHTML(f, base, i)).join('');
+    document.getElementById('grid')!.innerHTML = ids.map((id) => by.get(id)).filter(Boolean).map((f, i) => cardHTML(f, base, { i })).join('');
   });
 </script>

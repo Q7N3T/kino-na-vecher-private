@@ -96,17 +96,40 @@ export function initials(n) {
   return n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 }
 
+// Строка про время. Фильм — «финал в 22:40». Сериал при известном свободном времени — сколько серий
+// успеете и когда закончите; иначе — длительность серии. Время считает браузер, до этого блок .fin скрыт.
+export const EVENING = 240; // «весь вечер» в минутах — для подсчёта серий
+// Сколько серий успеть за свободное время: хотя бы одну и не больше, чем вышло
+export const episodesFor = (f, time) => Math.max(1, Math.min(f.ep || Infinity, Math.floor((time >= 999 ? EVENING : time) / f.min)));
+// Когда закончите: фильм — целиком; сериал при известном времени — столько серий, сколько успеете.
+// null — для сериала время не задано, считать нечего.
+export function finish(f, time = 0) {
+  if (!f.k) return { text: 'финал в', min: f.min };
+  if (!time) return null;
+  const n = episodesFor(f, time);
+  return { text: `успеете ${n} ${plural(n, 'серию', 'серии', 'серий')}, закончите в`, min: n * f.min };
+}
+
+export function timeLine(f, time = 0) {
+  const e = finish(f, time);
+  return e ? `<span class="fin"> · ${e.text} <b data-end="${e.min}"></b></span>` : ` · серия ${dur(f.min)}`;
+}
+
 // Карточка — одна разметка для страниц, собранных заранее, и для карточек, которые рисует браузер.
-export function cardHTML(f, base, i = 0, why = '') {
+// На постере — одна метка: почему тайтл в подборке (why); статус сериала — в мелкой строке.
+// time — свободное время зрителя в минутах, если известно (для сериалов: сколько серий успеет).
+export function cardHTML(f, base, { i = 0, why = '', time = 0 } = {}) {
   const st = status(f);
-  const meta = f.k ? [kindName(f), f.k === 'ms' ? years(f) : seasons(f)].filter(Boolean).join(' · ') : `${f.y} · ${dur(f.min)}`;
+  const meta = f.k
+    ? [kindName(f), f.k === 'ms' ? years(f) : seasons(f), st && `<span class="st${st.on ? ' on' : ''}">${st.label.toLowerCase()}</span>`].filter(Boolean).join(' · ')
+    : `${f.y} · ${dur(f.min)}`;
   const img = f.p
     ? `<img src="${tmdbImg(f.p, 342)}" alt="" loading="lazy" decoding="async" onerror="knvImg(this)">`
     : '';
   return `<a class="card" href="${titleUrl(base, f)}" data-id="${f.id}" style="--i:${Math.min(i, 12)}">
-  <div class="poster" style="--h:${hue(f.id)}">${img}<span class="ph">${esc(f.t)}</span>${st && st.on !== null ? `<span class="badge ${st.on ? 'on' : 'off'}"><i></i>${st.label}</span>` : ''}${why ? `<span class="why">${why}</span>` : ''}</div>
+  <div class="poster" style="--h:${hue(f.id)}">${img}<span class="ph" aria-hidden="true">${esc(f.t)}</span>${why ? `<span class="why">${why}</span>` : ''}</div>
   <span class="card-t">${esc(f.t)}</span>
   <span class="card-m">${meta}</span>
-  <span class="card-e">${f.k ? 'серия ' + dur(f.min) + ', ' : ''}финал в <b data-end="${f.min}"></b> · IMDb ${f.imdb.toFixed(1)}</span>
+  <span class="card-e">IMDb ${f.imdb.toFixed(1)}${timeLine(f, time)}</span>
 </a>`;
 }

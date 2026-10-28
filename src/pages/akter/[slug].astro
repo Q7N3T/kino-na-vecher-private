@@ -31,7 +31,7 @@ const yrs = roles.map((r) => r.f.y);
   {[['Фильмы', films], ['Сериалы', series]].map(([h, l]: any) => l.length > 0 && (
     <section class="sec wrap">
       <div class="sec-h"><h2>{h}</h2></div>
-      <div class="grid" set:html={l.map((r: any, i: number) => cardHTML(r.f, base, i % 18).replace('<span class="card-m">', `<span class="card-r">${esc(r.r)}</span><span class="card-m">`)).join('')}></div>
+      <div class="grid" set:html={l.map((r: any, i: number) => cardHTML(r.f, base, { i: i % 18 }).replace('<span class="card-m">', `<span class="card-r">${esc(r.r)}</span><span class="card-m">`)).join('')}></div>
     </section>
   ))}
 </Base>

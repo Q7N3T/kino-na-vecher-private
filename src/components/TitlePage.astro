@@ -129,7 +129,7 @@ const jsonld = {
   {sim.length > 0 && (
     <section class="sec wrap" aria-labelledby="h-sim">
       <div class="sec-h"><h2 id="h-sim">Похожее</h2></div>
-      <div class="grid row" set:html={sim.map((x, i) => cardHTML(x, base, i)).join('')}></div>
+      <div class="grid row" set:html={sim.map((x, i) => cardHTML(x, base, { i })).join('')}></div>
     </section>
   )}
 </Base>
@@ -152,6 +152,7 @@ const jsonld = {
   .stats dd { margin: 0; font-size: 24px; font-weight: 600; }
   .stats dd.small { font-size: 17px; line-height: 1.35; padding-top: 4px; }
   .stats span { font-size: 12px; color: var(--dim); }
+  .clock:has(> b:empty) { display: none; } /* время ещё не посчитано */
   .clock { display: flex; align-items: center; gap: 18px; padding: 18px 22px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); max-width: 720px; }
   .clock b { font-size: 32px; font-weight: 600; color: var(--accent); line-height: 1; }
   .clock span { font-size: 15px; color: var(--muted); line-height: 1.4; }

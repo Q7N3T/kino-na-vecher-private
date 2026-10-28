@@ -16,6 +16,6 @@ const list = collection(c, 120);
       <nav class="crumbs" aria-label="Навигация"><a href={base}>Главная</a> / <a href={`${base}podborki/`}>Подборки</a></nav>
       <h1>{c.title}</h1><p>{c.sub}. Лучшие по рейтингу IMDb.</p>
     </header>
-    <div class="grid" style="padding-top: 32px" set:html={list.map((f, i) => cardHTML(f, base, i % 18)).join('')}></div>
+    <div class="grid" style="padding-top: 32px" set:html={list.map((f, i) => cardHTML(f, base, { i: i % 18 })).join('')}></div>
   </div>
 </Base>

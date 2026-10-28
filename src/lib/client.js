@@ -32,11 +32,11 @@ export const SORTS = {
 };
 
 // Сетка с кнопкой «Показать ещё»: первые first карточек сразу, дальше по step
-export function pager(grid, button, left, list, { first = 18, step = 24 } = {}) {
+export function pager(grid, button, left, list, { first = 18, step = 24, time = 0 } = {}) {
   let shown = 0;
   const more = (n) => {
     const next = list.slice(shown, shown + n);
-    grid.insertAdjacentHTML('beforeend', next.map((f, i) => cardHTML(f, base, i)).join(''));
+    grid.insertAdjacentHTML('beforeend', next.map((f, i) => cardHTML(f, base, { i, time })).join(''));
     shown += next.length;
     const rest = list.length - shown;
     button.hidden = rest <= 0;
