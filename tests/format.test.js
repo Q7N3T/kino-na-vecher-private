@@ -88,3 +88,11 @@ test('одна метка на постере: «почему в подборк�
 test('заглушка постера не читается скринридером второй раз', () => {
   assert.match(cardHTML(movie, '/'), /<span class="ph" aria-hidden="true">/);
 });
+
+test('кинотеатр на карточке: где смотреть сразу, с логотипом', () => {
+  const html = cardHTML({ ...movie, w: ['Okko', '/okko.png', 's'] }, '/');
+  assert.ok(text(html).includes('Okko · по подписке'));
+  assert.ok(html.includes('class="card-w"'));
+  assert.ok(text(cardHTML({ ...movie, w: ['Иви', '/ivi.png', 'f'] }, '/')).includes('Иви · бесплатно'));
+  assert.ok(!cardHTML(movie, '/').includes('card-w'), 'нет данных — нет строки');
+});

@@ -28,6 +28,13 @@ export function actorSearchRow(a) {
   };
 }
 
+// Где смотреть сразу — для карточки: первый кинотеатр по подписке, бесплатно или с рекламой
+// (аренда и покупка — на странице тайтла). [название, логотип, вид] или 0.
+export function watchNow(wp) {
+  const kind = wp && ['s', 'f', 'a'].find((k) => wp[k]?.length);
+  return kind ? [wp[kind][0][1], wp[kind][0][2], kind] : 0;
+}
+
 let cache;
 
 export function load() {
@@ -59,6 +66,7 @@ export function load() {
     f.crew = (x.c || []).filter((c) => c[0]).map(([n, r, p]) => ({ n, r: r || '', p: p || '' }));
     f.sx = x.x || [];
     f.wp = x.w || null; // где посмотреть в России: {l, s, f, a, r, b}
+    f.w = watchNow(f.wp);
     if (!f.crew.length) f.crew = (f.cast || []).map((c) => ({ n: c.n, r: c.r || '', p: '' }));
   }
   films.sort((a, b) => b.pp - a.pp);
@@ -126,7 +134,7 @@ export function collection(c, limit = 120) {
 }
 
 // Лёгкий индекс для браузера: подбор, каталог, поиск, избранное. Массивы вместо объектов — так втрое меньше.
-export const INDEX_FIELDS = ['id', 'slug', 't', 'o', 'y', 'k', 'min', 'm', 'genres', 'imdb', 'v', 'pp', 'p', 'ss', 'ye', 'ann', 'ts', 'la', 'ep', 'd'];
+export const INDEX_FIELDS = ['id', 'slug', 't', 'o', 'y', 'k', 'min', 'm', 'genres', 'imdb', 'v', 'pp', 'p', 'ss', 'ye', 'ann', 'ts', 'la', 'ep', 'd', 'w'];
 export function indexRows() {
   return load().films.map((f) => INDEX_FIELDS.map((k) => (k === 'pp' ? Math.round(f.pp * 10) / 10 : f[k] ?? 0)));
 }

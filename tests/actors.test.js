@@ -18,3 +18,11 @@ test('годы и лучший фильм — по всем ролям, лент
   assert.deepEqual([row.y0, row.y1], [1985, 2009]);
   assert.equal(row.best, 900);
 });
+
+test('где смотреть сразу: подписка, потом бесплатно, потом с рекламой; аренда и покупка — нет', async () => {
+  const { watchNow } = await import('../src/lib/data.js');
+  assert.deepEqual(watchNow({ s: [[1, 'Okko', '/o.png']], f: [[2, 'Иви', '/i.png']] }), ['Okko', '/o.png', 's']);
+  assert.deepEqual(watchNow({ a: [[3, 'Wink', '/w.png']], b: [[4, 'Apple TV Store', '/a.png']] }), ['Wink', '/w.png', 'a']);
+  assert.equal(watchNow({ r: [[4, 'Apple TV Store', '/a.png']] }), 0);
+  assert.equal(watchNow(null), 0);
+});
