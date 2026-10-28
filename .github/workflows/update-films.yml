@@ -56,4 +56,10 @@ jobs:
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
           git add data/films.js data/syn
           git commit -m "Обновить базу фильмов ($(date -u +%Y-%m-%d))"
-          git push
+          # за полчаса сборки в main могли прийти другие коммиты: бот меняет только data/, поэтому
+          # перед отправкой встаём поверх свежего main (без этого push отклоняется и сборка пропадает)
+          for i in 1 2 3; do
+            git pull --rebase -q origin main && git push && exit 0
+            sleep $((i * 10))
+          done
+          exit 1

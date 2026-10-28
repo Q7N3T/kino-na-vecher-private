@@ -63,7 +63,7 @@ class WatchProviders(unittest.TestCase):
     def det(self, ru):
         return {"watch/providers": {"results": {"RU": ru}}}
 
-    def test_groups_by_kind_in_display_order_without_yandex(self):
+    def test_groups_by_kind_in_display_order(self):
         out = b.watch_providers(self.det({
             "link": "https://www.themoviedb.org/movie/1/watch?locale=RU",
             "flatrate": [
@@ -73,13 +73,13 @@ class WatchProviders(unittest.TestCase):
             ],
             "buy": [{"provider_id": 4, "provider_name": "Apple TV Store", "logo_path": "/a.png"}],
         }))
-        self.assertEqual(out["s"], [[1, "Okko", "/o.png"], [2, "Иви", "/i.png"]])
+        self.assertEqual(out["s"], [[3, "Кинопоиск", "/k.png"], [1, "Okko", "/o.png"], [2, "Иви", "/i.png"]])
         self.assertEqual(out["b"], [[4, "Apple TV Store", "/a.png"]])
         self.assertEqual(out["l"], "https://www.themoviedb.org/movie/1/watch?locale=RU")
 
     def test_nothing_in_russia_is_none(self):
         self.assertIsNone(b.watch_providers({}))
-        self.assertIsNone(b.watch_providers(self.det({"link": "x", "flatrate": [{"provider_name": "Yandex"}]})))
+        self.assertIsNone(b.watch_providers(self.det({"link": "x"})))
 
 
 class RoundTrip(unittest.TestCase):

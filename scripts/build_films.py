@@ -215,7 +215,6 @@ def build_imdb(min_votes):
 
 WATCH_REGION = "RU"
 WATCH_KINDS = {"flatrate": "s", "free": "f", "ads": "a", "rent": "r", "buy": "b"}  # подписка, бесплатно, с рекламой, аренда, покупка
-NO_PROVIDERS = re.compile(r"кинопоиск|kinopoisk|яндекс|yandex", re.I)  # без сервисов Яндекса
 
 
 def watch_providers(det):
@@ -225,7 +224,7 @@ def watch_providers(det):
     for src, key in WATCH_KINDS.items():
         items = [[p.get("provider_id"), p.get("provider_name"), p.get("logo_path")]
                  for p in sorted(r.get(src) or [], key=lambda p: p.get("display_priority", 99))
-                 if p.get("provider_name") and not NO_PROVIDERS.search(p["provider_name"])]
+                 if p.get("provider_name")]
         if items: out[key] = items[:6]
     if out and r.get("link"): out["l"] = r["link"]
     return out or None
@@ -367,7 +366,7 @@ def tmdb(films):
 
 SYN = os.path.join(ROOT, "data", "syn")
 SYN_PARTS = 64  # описания и состав с фото лежат отдельно и грузятся только на странице фильма
-CAST, CAST_VER = 10, 3  # сколько актёров брать из TMDB; версия — чтобы перезапросить кеш при изменениях (2: где посмотреть, 3: жанры TMDB)
+CAST, CAST_VER = 10, 4  # сколько актёров брать из TMDB; версия — чтобы перезапросить кеш при изменениях (2: где посмотреть, 3: жанры TMDB, 4: с Кинопоиском)
 
 
 def syn_part(tid):

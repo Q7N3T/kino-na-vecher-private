@@ -26,7 +26,7 @@ const score = [`IMDb ${f.imdb.toFixed(1)}`, `${votes(f.v)} ${plural(f.v, 'оце
 const nowKind = f.wp && ['s', 'f', 'a'].find((k) => f.wp[k]?.length);
 const go = nowKind && { pid: f.wp[nowKind][0][0], name: f.wp[nowKind][0][1], free: nowKind !== 's' };
 // поискать в кинотеатрах, которых нет в «Где посмотреть» (у двух третей тайтлов данных JustWatch нет вовсе)
-const elsewhere = searchLinks(f, watchGroups.flatMap((g) => g.items.map(([pid]) => pid)));
+const elsewhere = searchLinks(f, watchGroups.flatMap((g) => g.items.flatMap(([pid, name]) => [pid, name.toLowerCase()])));
 const jsonld = {
   '@context': 'https://schema.org', '@type': f.k ? 'TVSeries' : 'Movie', name: f.t, alternateName: f.o, datePublished: String(f.y),
   genre: f.genres, description: f.syn || undefined, image: f.p ? `https://image.tmdb.org/t/p/w500${f.p}` : undefined,
@@ -59,7 +59,7 @@ const jsonld = {
           <p class="clock">{f.k ? 'Первая серия закончится в' : 'Закончится в'} <b data-end={f.min}></b>, если начать сейчас</p>
           <div class="acts">
             {go
-              ? <a class="btn" id="tonight" data-id={f.id} href={watchLink(f, go.pid)} rel="noopener sponsored" target="_blank" data-umami-event="Где посмотреть" data-umami-event-provider={go.name} data-umami-event-type="главная кнопка" data-umami-event-title={f.t}>{go.free ? `Смотреть бесплатно в ${go.name}` : `Смотреть в ${go.name}`}</a>
+              ? <a class="btn" id="tonight" data-id={f.id} href={watchLink(f, go.pid, go.name)} rel="noopener sponsored" target="_blank" data-umami-event="Где посмотреть" data-umami-event-provider={go.name} data-umami-event-type="главная кнопка" data-umami-event-title={f.t}>{go.free ? `Смотреть бесплатно в ${go.name}` : `Смотреть в ${go.name}`}</a>
               : <button class="btn" id="tonight" data-id={f.id} data-umami-event="Смотрю сегодня" data-umami-event-title={f.t}>Смотрю сегодня</button>}
             <button class="btn ghost" id="watch" data-id={f.id} aria-pressed="false" data-umami-event="В мой список" data-umami-event-title={f.t}>
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg><span>В мой список</span></button>
@@ -76,7 +76,7 @@ const jsonld = {
                   <span class="where-k">{g.label}</span>
                   <ul>
                     {g.items.map(([pid, name, logo]) => (
-                      <li><a href={watchLink(f, pid)} rel="noopener sponsored" target="_blank"
+                      <li><a href={watchLink(f, pid, name)} rel="noopener sponsored" target="_blank"
                         data-umami-event="Где посмотреть" data-umami-event-provider={name} data-umami-event-type={g.label} data-umami-event-title={f.t}>
                         {logo && <img src={tmdbImg(logo, 64, 'w92')} alt="" width="28" height="28" loading="lazy" onerror="knvImg(this)" />}
                         <span>{name}</span>
