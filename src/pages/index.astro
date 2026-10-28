@@ -17,29 +17,6 @@ const popular = popularNow(films, { exclude: new Set(tonight.map((f) => f.id)) }
 const colls = COLLECTIONS.slice(0, 4).map((c) => ({ ...c, n: collection(c, 100000).length }));
 const nSeries = films.filter((f) => f.k).length;
 // слоган: каждое слово отдельно, чтобы при прокрутке они проявлялись по одному
-const TAGLINE = ['Не листайте каталог весь вечер.', 'Скажите, сколько есть времени, и через минуту начинайте смотреть.'];
-const STEPS = [
-  ['Сколько есть времени', 'Полтора часа, два или весь вечер. Фильмы длиннее не попадут в подборку, а у сериала считается одна серия.'],
-  ['Какое настроение', 'Посмеяться, понервничать, погрустить, подумать или вдохновиться. Жанры уже разобраны по настроению.'],
-  ['Во сколько финал', 'На каждой карточке видно, когда закончится фильм или серия, если начать прямо сейчас.'],
-];
-const BENEFITS = [
-  ['Находки, а не только хиты', 'в подборке рядом с известным есть фильмы с высоким рейтингом, о которых говорят реже.'],
-  ['Честные сезоны', 'считаем только вышедшие серии, а у сериала видно, продолжается он или завершён.'],
-  ['Без регистрации', 'подбор учится на том, что вы открываете, и хранит это только в вашем браузере.'],
-  ['Где посмотреть', 'на странице фильма собраны легальные онлайн кинотеатры в России.'],
-];
-const FAQ = [
-  ['Как работает подбор?', 'Вы выбираете, сколько есть времени, какое настроение и что смотреть: фильм или сериал. Подборка из двенадцати карточек собирается из нескольких источников: находки с высоким рейтингом, свежие фильмы последних пяти лет, классика и, если есть история, то, что похоже на ваш вкус.'],
-  ['Почему «Выбор на сегодня» каждый день новый?', 'Это один фильм или сериал на весь день, обычно находка. Он меняется в полночь, а при тех же фильтрах весь день остаётся одним и тем же. Кнопка с кубиком предложит случайный вариант, а «Выбор дня» вернёт его обратно.'],
-  ['Что значит метка «Находка»?', 'Фильм с высоким рейтингом IMDb и не меньше чем 20 тысячами оценок, который при этом мало кто смотрел. Такие подборки меняются каждый день.'],
-  ['Можно посмотреть фильм прямо на сайте?', 'Нет. Мы помогаем выбрать, а на странице фильма показываем, в каких легальных онлайн кинотеатрах он есть: по подписке, бесплатно, в аренду или на покупку.'],
-  ['Откуда рейтинги и описания?', 'Названия, годы, длительность, жанры, рейтинги, сезоны и серии взяты из открытых данных IMDb. Постеры, описания и фото актёров взяты из TMDB, а данные о кинотеатрах из JustWatch.'],
-  ['Как часто обновляется база?', 'Каждую неделю, в ночь на понедельник. В базе фильмы и сериалы, у которых на IMDb не меньше 10 тысяч оценок.'],
-  ['Нужна ли регистрация?', 'Нет. Список «Хочу посмотреть» и история для подбора хранятся только в вашем браузере. Стереть историю можно на странице «Хочу посмотреть».'],
-  ['Сколько это стоит?', 'Ничего. Сайт бесплатный и без рекламы.'],
-];
-const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
 ---
 <Base section="" intro>
   <section class="wrap hero">
@@ -85,20 +62,6 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     <div class="grid row" id="tonight" set:html={curated.map((x, i) => cardHTML(x.f, base, { i, why: WHY[x.why], time: DEF.time })).join('')}></div>
   </section>
 
-  <section class="sec wrap tagline reveal" aria-label="Коротко о сервисе">
-    <p class="tag-t">{TAGLINE.map((line) => <span class="tag-l">{line.split(' ').map((w) => <span class="w">{w} </span>)}</span>)}</p>
-  </section>
-
-  <section class="sec wrap reveal" aria-labelledby="h-how">
-    <div class="sec-h"><h2 id="h-how">Как это работает</h2></div>
-    <ol class="steps">
-      {STEPS.map(([t, d], i) => <li class="step"><span class="step-n">{String(i + 1).padStart(2, '0')}</span><h3>{t}</h3><p>{d}</p></li>)}
-    </ol>
-    <ul class="benefits">
-      {BENEFITS.map(([t, d]) => <li><b>{t}</b> — {d}</li>)}
-    </ul>
-  </section>
-
   <section class="sec band reveal" aria-labelledby="h-colls">
     <div class="wrap">
       <div class="sec-h"><h2 id="h-colls">Подборки</h2><a class="more-link" href={`${base}podborki/`}>Все подборки →</a></div>
@@ -124,21 +87,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     <div class="grid row" id="pop" set:html={popular.map((f, i) => cardHTML(f, base, { i })).join('')}></div>
   </section>
 
-  <section class="sec wrap faq reveal" aria-labelledby="h-faq">
-    <div class="sec-h"><h2 id="h-faq">Вопросы и ответы</h2></div>
-    <div class="faq-l">
-      {FAQ.map(([q, a], i) => <details style={`--i:${i}`}><summary><span>{q}</span><Fragment set:html={icon('caret', 20)} /></summary><p>{a}</p></details>)}
-    </div>
-    <script type="application/ld+json" set:html={JSON.stringify(faqLd)}></script>
-  </section>
 
-  <section class="sec wrap reveal" aria-labelledby="h-cta">
-    <div class="cta">
-      <h2 id="h-cta">Осталось выбрать, что смотреть</h2>
-      <p>Бесплатно, без регистрации и рекламы.</p>
-      <button class="btn" id="to-top" type="button" data-umami-event="Подобрать фильм внизу">Подобрать фильм на вечер<Fragment set:html={icon('arrowUp', 18)} /></button>
-    </div>
-  </section>
 </Base>
 
 <style>
@@ -191,66 +140,12 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
   .pick.done .pick-a { animation: pop .45s var(--ease); }
   @keyframes pop { 0% { transform: scale(.92); opacity: .3; } 100% { transform: none; opacity: 1; } }
 
-  /* слоган: слова приглушены и по одному проявляются при прокрутке */
-  .tagline { padding-top: 96px; padding-bottom: 96px; }
-  .tag-t { margin: 0; max-width: 880px; font-size: 48px; line-height: 1; font-weight: 600; letter-spacing: -.02em; text-wrap: balance; }
-  .tag-l { display: block; }
-  .tag-l + .tag-l { margin-top: 16px; }
-  .w { color: rgba(242, 238, 230, .3); transition: color 500ms var(--ease); }
-  .w.on { color: var(--text); }
 
-  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
-  .step { padding: 24px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
-  .step-n { font-size: 14px; line-height: 20px; font-weight: 600; color: var(--accent); }
-  .step h3 { margin: 12px 0 8px; font-size: 20px; line-height: 28px; font-weight: 600; }
-  .step p { margin: 0; font-size: 16px; line-height: 24px; color: var(--muted); }
-  .benefits { list-style: none; margin: 32px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 48px; }
-  .benefits li { font-size: 16px; line-height: 24px; color: var(--muted); }
-  .benefits b { color: var(--text); font-weight: 600; }
 
-  .faq-l { max-width: 880px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); overflow: hidden; }
-  .faq details + details { border-top: 1px solid var(--line); }
-  .faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px; cursor: pointer; list-style: none; font-size: 18px; line-height: 28px; font-weight: 600; transition: color 300ms var(--ease), background 300ms var(--ease); }
-  .faq summary::-webkit-details-marker { display: none; }
-  .faq summary > span { transition: transform 500ms var(--ease); }
-  .faq summary:hover { background: var(--surface-2); }
-  .faq summary:hover > span { transform: translateX(4px); }
-  .faq summary:active > span { transform: translateX(4px) translateY(1px); }
-  .faq details[open] summary { color: var(--accent); }
-  .faq summary:focus-visible { outline-offset: -2px; border-radius: 16px; }
-  .faq summary :global(svg) { flex-shrink: 0; color: var(--dim); transition: transform 500ms var(--ease), color 300ms var(--ease); }
-  .faq summary:hover :global(svg) { color: var(--text); }
-  .faq details[open] summary :global(svg) { transform: rotate(180deg); color: var(--accent); }
-  .faq details p { margin: 0; padding: 0 24px 24px; max-width: 720px; font-size: 16px; line-height: 24px; color: var(--muted); }
-  /* ответ выезжает и проявляется; при закрытии — уходит обратно, потом details закрывается */
-  .faq details[open] p { animation: faq-in 500ms var(--ease) both; }
-  .faq details.closing p { animation: faq-out 300ms var(--ease) both; }
-  @keyframes faq-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-  @keyframes faq-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-8px); } }
-  /* вопросы появляются по очереди, когда раздел доходит до экрана: шаг 50 мс, вся цепочка не дольше 400 мс */
-  .faq details { opacity: 0; transform: translateY(24px); transition: opacity 500ms var(--ease), transform 500ms var(--ease); transition-delay: calc(var(--i) * 50ms); }
-  .faq.in details, :global(html:not(.js)) .faq details { opacity: 1; transform: none; }
-
-  .cta { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 64px 24px; border-radius: 24px; background: var(--surface); border: 1px solid var(--line); }
-  .cta h2 { margin: 0; font-size: 36px; line-height: 40px; font-weight: 600; }
-  .cta p { margin: 0; font-size: 18px; line-height: 28px; color: var(--muted); }
-  .cta .btn { margin-top: 8px; transition: filter 300ms var(--ease), transform 500ms var(--ease), box-shadow 500ms var(--ease); }
-  .cta .btn:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -16px rgba(242, 181, 68, .6); }
-  .cta .btn:active { transform: scale(.98); }
-  .cta .btn :global(svg) { transition: transform 500ms var(--ease); }
-  .cta .btn:hover :global(svg) { transform: translateY(-4px); }
-  @media (max-width: 1100px) { .steps { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 760px) {
     .sentence { font-size: 36px; line-height: 40px; }
     .lead { margin-top: 16px; font-size: 16px; line-height: 24px; }
     .proof { margin-top: 16px; font-size: 12px; line-height: 16px; }
-    .tagline { padding-top: 64px; padding-bottom: 64px; }
-    .tag-t { font-size: 36px; line-height: 40px; }
-    .benefits { grid-template-columns: minmax(0, 1fr); margin-top: 24px; }
-    .faq summary { padding: 16px; font-size: 16px; line-height: 24px; }
-    .faq details p { padding: 0 16px 16px; }
-    .cta { padding: 48px 16px; }
-    .cta h2 { font-size: 30px; line-height: 36px; }
     .hero { padding-top: 24px; gap: 24px; }
     .eyebrow { margin-bottom: 12px; }
     .pickers { margin-top: 24px; gap: 12px; }
@@ -415,15 +310,6 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
   }), { rootMargin: '0px 0px -10% 0px' });
   document.querySelectorAll('.reveal').forEach((el) => seen.observe(el));
 
-  // слоган: слово загорается, когда пересекает линию на высоте 60% экрана; слова одной строки — по очереди
-  const words = new IntersectionObserver((es) => {
-    es.filter((e) => e.isIntersecting).forEach((e, i) => {
-      (e.target as HTMLElement).style.transitionDelay = i * 60 + 'ms';
-      e.target.classList.add('on');
-      words.unobserve(e.target);
-    });
-  }, { rootMargin: '0px 0px -40% 0px' });
-  document.querySelectorAll('.tag-t .w').forEach((w) => words.observe(w));
 
   // плитки подборок наклоняются вслед за курсором — только с мышью и если анимация не отключена
   if (matchMedia('(hover: hover) and (pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -437,21 +323,7 @@ const faqLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity
     });
   }
 
-  // закрытие вопроса: сначала ответ уходит, потом details закрывается
-  document.querySelectorAll<HTMLDetailsElement>('.faq details').forEach((d) => {
-    d.querySelector('summary')!.addEventListener('click', (e) => {
-      if (!d.open || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      e.preventDefault();
-      d.classList.add('closing');
-      setTimeout(() => { d.open = false; d.classList.remove('closing'); }, 300);
-    });
-  });
 
-  $('to-top').addEventListener('click', () => {
-    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
-    ($('g-time').querySelector('[aria-pressed="true"]') as HTMLElement)?.focus({ preventScroll: true });
-  });
 
   label();
   update();
