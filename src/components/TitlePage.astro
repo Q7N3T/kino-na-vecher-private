@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import { similar } from '../lib/data.js';
 import { sticker } from '../lib/stickers.js';
 import { cardHTML, MOODS, status, years, kindName, dur, plural, num, votes, tmdbImg, hue, initials } from '../lib/format.js';
-import { watchLink } from '../lib/partners.js';
+import { watchLink, searchLinks } from '../lib/partners.js';
 
 const { f } = Astro.props;
 const base = import.meta.env.BASE_URL;
@@ -25,6 +25,8 @@ const score = [`IMDb ${f.imdb.toFixed(1)}`, `${votes(f.v)} ${plural(f.v, 'оце
 // главная кнопка — смотреть сразу, если есть где; иначе — «Смотрю сегодня»
 const nowKind = f.wp && ['s', 'f', 'a'].find((k) => f.wp[k]?.length);
 const go = nowKind && { pid: f.wp[nowKind][0][0], name: f.wp[nowKind][0][1], free: nowKind !== 's' };
+// поискать в кинотеатрах, которых нет в «Где посмотреть» (у двух третей тайтлов данных JustWatch нет вовсе)
+const elsewhere = searchLinks(f, watchGroups.flatMap((g) => g.items.map(([pid]) => pid)));
 const jsonld = {
   '@context': 'https://schema.org', '@type': f.k ? 'TVSeries' : 'Movie', name: f.t, alternateName: f.o, datePublished: String(f.y),
   genre: f.genres, description: f.syn || undefined, image: f.p ? `https://image.tmdb.org/t/p/w500${f.p}` : undefined,
@@ -64,6 +66,7 @@ const jsonld = {
             <a class="btn ghost" href={yt} rel="noopener" target="_blank" data-umami-event="Трейлер" data-umami-event-title={f.t}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"></path></svg>Трейлер</a>
           </div>
           {f.syn && <p class="syn">{f.syn}</p>}
+          <p class="elsewhere">{watchGroups.length ? 'Поискать ещё в' : 'Поискать в кинотеатрах'}: {elsewhere.map((l, i) => <>{i > 0 && ' · '}<a href={l.url} rel="noopener" target="_blank" data-umami-event="Поискать в кинотеатре" data-umami-event-provider={l.name} data-umami-event-title={f.t}>{l.name}</a></>)}</p>
           <p class="more">Подробнее: <a href={`https://www.imdb.com/title/${f.id}/`} rel="noopener" target="_blank">IMDb ↗</a> · <a href={`https://www.themoviedb.org/redirect?external_source=imdb_id&external_id=${f.id}`} rel="noopener" target="_blank">TMDB ↗</a></p>
           {watchGroups.length > 0 && !(go && watchGroups.length === 1 && watchGroups[0].items.length === 1) && ( /* один кинотеатр — уже на главной кнопке */
             <section class="where" aria-labelledby="h-where">
@@ -162,6 +165,9 @@ const jsonld = {
   .t-main { max-width: 880px; display: flex; flex-direction: column; gap: 48px; }
   .t-main h2 { margin: 0 0 16px; font-size: 24px; line-height: 32px; font-weight: 600; }
   .more { margin: -12px 0 0; font-size: 14px; color: var(--dim); }
+  .elsewhere { margin: 0; font-size: 14px; line-height: 24px; color: var(--dim); max-width: 720px; }
+  .elsewhere a { color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--line-2); transition: color 300ms var(--ease), border-color 300ms var(--ease); }
+  .elsewhere a:hover { color: var(--accent); border-color: var(--accent); }
   .more a { color: var(--muted); text-decoration: none; } .more a:hover { color: var(--text); }
   .syn { margin: 0; font-size: 16px; line-height: 26px; color: var(--text-2); max-width: 68ch; }
   .cast { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 24px 20px; }
