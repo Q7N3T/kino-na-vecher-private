@@ -81,7 +81,7 @@ test('одна метка на постере: «почему в подборк�
   const html = cardHTML(show, '/', { why: 'Находка' });
   assert.equal((html.match(/class="(why|badge)/g) || []).length, 1);
   assert.ok(html.includes('class="why"'));
-  assert.ok(text(html).includes('Сериал · 4 сезона · завершён'));
+  assert.ok(text(html).includes('4 сезона · завершён'));
   assert.equal((cardHTML(show, '/').match(/class="(why|badge)/g) || []).length, 0);
 });
 
@@ -89,7 +89,7 @@ test('заглушка постера не читается скринридер
   assert.match(cardHTML(movie, '/'), /<span class="ph" aria-hidden="true">/);
 });
 
-test('кинотеатр на карточке: где смотреть сразу, с логотипом', () => {
+test('кинотеатр на карточке: логотип, название и способ — для скринридера', () => {
   const html = cardHTML({ ...movie, w: ['Okko', '/okko.png', 's'] }, '/');
   assert.ok(text(html).includes('Okko · по подписке'));
   assert.ok(html.includes('class="card-w"'));

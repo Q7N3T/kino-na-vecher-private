@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { load, COLLECTIONS } from '../lib/data.js';
 import { curate, popularNow } from '../lib/curate.js';
-import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur, num, finish, plural } from '../lib/format.js';
+import { cardHTML, MOODS, TIMES, KINDS, cap, hue, tmdbImg, kindName, seasons, dur, finish } from '../lib/format.js';
 import { icon } from '../lib/icons.js';
 import CollTile from '../components/CollTile.astro';
 
@@ -12,24 +12,21 @@ const DEF = { time: 105, mood: 'laugh', kind: 'any' };
 // та же подборка, что соберёт браузер, — чтобы при загрузке ничего не мелькало
 const curated = curate(films.filter((f) => f.min <= DEF.time && f.m.includes(DEF.mood)), { time: DEF.time, mood: DEF.mood, day: new Date().toDateString() }).items;
 const tonight = curated.map((x) => x.f);
-const WHY = { gem: 'Находка', classic: 'Классика', taste: 'По вашему вкусу' };
+const WHY = { gem: 'Находка', taste: 'По вашему вкусу' };
 // в собранной странице — только вкладка «Всё»; «Фильмы» и «Сериалы» браузер рисует по клику
 const popular = popularNow(films, { exclude: new Set(tonight.map((f) => f.id)) });
 const colls = COLLECTIONS.slice(0, 4);
-const nSeries = films.filter((f) => f.k).length;
 // слоган: каждое слово отдельно, чтобы при прокрутке они проявлялись по одному
 ---
 <Base section="" intro>
   <section class="wrap hero">
     <div class="hero-main">
-      <p class="eyebrow enter" style="--d:0">Сейчас <span data-now></span> · подберём под ваш вечер</p>
       <h1 class="sentence enter" style="--d:1">Сегодня у меня <span class="nw"><button class="slot" id="s-time" data-menu="m-time" aria-haspopup="listbox" aria-expanded="false" aria-controls="m-time"><span class="slot-w">{TIMES[0].word}</span><Fragment set:html={icon('caret', 20)} /></button>,</span> хочется <span class="nw"><button class="slot" id="s-mood" data-menu="m-mood" aria-haspopup="listbox" aria-expanded="false" aria-controls="m-mood"><span class="slot-w">{MOODS[0].word}</span><Fragment set:html={icon('caret', 20)} /></button>.</span> Смотрим <button class="slot" id="s-kind" data-menu="m-kind" aria-haspopup="listbox" aria-expanded="false" aria-controls="m-kind"><span class="slot-w">{KINDS[0].word}</span><Fragment set:html={icon('caret', 20)} /></button></h1>
-      <p class="lead enter" style="--d:2">Нажмите на выделенные слова: подберём фильм или сериал под ваш вечер и покажем, во сколько закончите.</p>
+      <p class="lead enter" style="--d:2">Нажмите на выделенное слово, чтобы поменять.</p>
       <!-- меню выделенных слов: одно открыто за раз, под словом -->
       <div class="menu" id="m-time" role="listbox" aria-label="Сколько есть времени" hidden>{TIMES.map((t) => <button class="opt" role="option" data-time={t.v} aria-selected={String(t.v === DEF.time)}>{t.chip}</button>)}</div>
       <div class="menu" id="m-mood" role="listbox" aria-label="Какое настроение" hidden>{[...MOODS, { v: 'any', word: 'неважно' }].map((m) => <button class="opt" role="option" data-mood={m.v} aria-selected={String(m.v === DEF.mood)}>{cap(m.word)}</button>)}</div>
       <div class="menu" id="m-kind" role="listbox" aria-label="Что смотрим" hidden>{KINDS.map((k) => <button class="opt" role="option" data-kind={k.v} aria-selected={String(k.v === DEF.kind)}>{cap(k.forms[0])}</button>)}</div>
-      <p class="proof enter" style="--d:3"><b>{num(films.length - nSeries)}</b> {plural(films.length - nSeries, 'фильм', 'фильма', 'фильмов')} и <b>{num(nSeries)}</b> {plural(nSeries, 'сериал', 'сериала', 'сериалов')} с рейтингом IMDb · база обновляется каждую неделю</p>
     </div>
     <div class="pick enter" id="pick-card" style="--d:3">
       <a class="pick-a" id="pick-a" data-umami-event="Выбор на сегодня" href={`${base}${tonight[0].k ? 'serial' : 'film'}/${tonight[0].slug}/`}>
@@ -42,7 +39,6 @@ const nSeries = films.filter((f) => f.k).length;
         </span>
       </a>
       <div class="pick-f">
-        <span class="pick-n" id="pick-n">Новый выбор — в полночь</span>
         <button class="back" id="pick-back" type="button" hidden><Fragment set:html={icon('undo', 16)} /><span>Выбор дня</span></button>
         <button class="dice" id="dice" type="button" aria-label="Случайный выбор под ваш вечер" data-umami-event="Кубик"><Fragment set:html={icon('dice', 18)} /><span id="dice-t">Не то? Случайный</span></button>
       </div>
@@ -52,31 +48,23 @@ const nSeries = films.filter((f) => f.k).length;
   <section class="sec wrap" aria-labelledby="h-tonight">
     <div class="sec-h">
       <h2 id="h-tonight">Подходит на сегодня <small id="tonight-n"></small></h2>
-      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-        <a class="more-link" id="tonight-all" href={`${base}filmy/`}>Все →</a>
-      </div>
+      <a class="more-link" id="tonight-all" href={`${base}filmy/`}>Все →</a>
     </div>
     <div class="grid row" id="tonight" set:html={curated.map((x, i) => cardHTML(x.f, base, { i, why: WHY[x.why], time: DEF.time })).join('')}></div>
   </section>
 
-  <section class="sec band reveal" aria-labelledby="h-colls">
-    <div class="wrap">
-      <div class="sec-h"><h2 id="h-colls">Подборки</h2><a class="more-link" href={`${base}podborki/`}>Все подборки →</a></div>
-      <div class="colls">
-        {colls.map((c) => (
-          <CollTile c={c} />
-        ))}
-      </div>
-    </div>
+  <section class="sec wrap reveal" aria-labelledby="h-colls">
+    <div class="sec-h"><h2 id="h-colls">Подборки</h2><a class="more-link" href={`${base}podborki/`}>Все →</a></div>
+    <div class="colls">{colls.map((c) => <CollTile c={c} />)}</div>
   </section>
 
   <section class="sec wrap" aria-labelledby="h-pop">
     <div class="sec-h">
       <h2 id="h-pop">Популярное сейчас</h2>
-      <div class="chips" role="group" aria-label="Тип" id="pop-tabs">
-        <button class="chip" data-tab="all" aria-pressed="true">Всё</button>
-        <button class="chip" data-tab="movie" aria-pressed="false">Фильмы</button>
-        <button class="chip" data-tab="series" aria-pressed="false">Сериалы</button>
+      <div class="seg" role="group" aria-label="Тип" id="pop-tabs">
+        <button data-tab="all" aria-pressed="true">Всё</button>
+        <button data-tab="movie" aria-pressed="false">Фильмы</button>
+        <button data-tab="series" aria-pressed="false">Сериалы</button>
       </div>
     </div>
     <div class="grid row" id="pop" set:html={popular.map((f, i) => cardHTML(f, base, { i })).join('')}></div>
@@ -88,12 +76,9 @@ const nSeries = films.filter((f) => f.k).length;
 <style>
   .hero { display: flex; flex-wrap: wrap; gap: 40px 48px; align-items: flex-end; padding-top: 64px; padding-bottom: 24px; }
   .hero-main { flex: 999 1 640px; min-width: 0; }
-  .sentence { margin: 0; font-weight: 600; font-size: 60px; line-height: 1; letter-spacing: -.02em; max-width: 680px;
-    background: linear-gradient(90deg, #FFFFFF, #9B9B9B); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sentence { margin: 0; font-weight: 600; font-size: 60px; line-height: 1.05; letter-spacing: -.02em; max-width: 680px; color: var(--text); }
   .nw { white-space: nowrap; }
-  .lead { margin: 24px 0 0; max-width: 680px; font-size: 18px; line-height: 28px; color: var(--muted); }
-  .proof { margin: 24px 0 0; font-size: 14px; line-height: 20px; color: var(--dim); }
-  .proof b { color: var(--text-2); font-weight: 600; }
+  .lead { margin: 24px 0 0; font-size: 16px; line-height: 24px; color: var(--dim); }
   .slot { font: inherit; color: var(--accent); -webkit-text-fill-color: var(--accent); background: none; border: 0; padding: 0; border-bottom: 3px solid var(--accent); cursor: pointer; line-height: 1.05; display: inline-block; transition: color 300ms var(--ease); }
   .slot:hover { color: var(--accent-hi); }
   /* перелистывание: новое слово выезжает снизу, лишнее обрезано по краю строки, подчёркивание видно */
@@ -122,8 +107,7 @@ const nSeries = films.filter((f) => f.k).length;
   .pick-b > span { font-size: 14px; color: var(--muted); }
   .pick-b .pick-e { color: var(--accent); }
   .pick-b .pick-e:has([data-end]:empty) { visibility: hidden; } /* время ещё не посчитано */
-  .pick-f { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
-  .pick-n { font-size: 12px; color: var(--dim); min-width: 0; }
+  .pick-f { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
   .back { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px 0 12px; border-radius: 9999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color 300ms var(--ease), color 300ms var(--ease); }
   .back:hover { border-color: var(--line-2); color: var(--text); }
   .back:hover :global(svg) { transform: rotate(-90deg); }
@@ -148,13 +132,11 @@ const nSeries = films.filter((f) => f.k).length;
 
   @media (max-width: 760px) {
     .sentence { font-size: 36px; line-height: 40px; }
-    .lead { margin-top: 16px; font-size: 16px; line-height: 24px; }
-    .proof { margin-top: 16px; font-size: 12px; line-height: 16px; }
+    .lead { margin-top: 16px; }
     .hero { padding-top: 24px; gap: 24px; }
     .eyebrow { margin-bottom: 12px; }
     .pick { padding: 16px; gap: 12px; border-radius: 16px; }
     .pick-a { gap: 16px; }
-    .pick-f { padding-top: 12px; }
     .pick-p { width: 64px; }
     .pick-b b { font-size: 16px; }
   }
@@ -168,7 +150,7 @@ const nSeries = films.filter((f) => f.k).length;
 
   const state = { time: 105, mood: 'laugh', kind: 'any' };
   // метка на постере: почему тайтл в подборке
-  const WHY: Record<string, string> = { gem: 'Находка', classic: 'Классика', taste: 'По вашему вкусу' };
+  const WHY: Record<string, string> = { gem: 'Находка', taste: 'По вашему вкусу' };
   try { Object.assign(state, JSON.parse(sessionStorage.getItem('knv-pick') || '{}')); } catch {}
   let list = [];
   const $ = (id) => document.getElementById(id)!;
@@ -196,8 +178,7 @@ const nSeries = films.filter((f) => f.k).length;
     const matched = all.filter((f) => matches(f, state));
     const { items, rest } = curate(matched, { time: state.time, mood: state.mood, prof, day: new Date().toDateString() });
     list = [...items.map((x) => x.f), ...rest];
-    const forms = KINDS.find((k) => k.v === state.kind)!.forms;
-    $('tonight-n').textContent = list.length ? list.length.toLocaleString('ru-RU') + ' ' + plural(list.length, ...forms) + (prof.n ? ' · с учётом ваших вкусов' : '') : '';
+    $('tonight-n').textContent = prof.n && list.length ? 'с учётом ваших вкусов' : '';
     $('tonight').innerHTML = list.length
       ? items.map((x, i) => cardHTML(x.f, base, { i, why: WHY[x.why], time: state.time })).join('')
       : '<div class="empty"><h2>Под такой вечер ничего нет</h2><p>Дайте себе чуть больше времени или выберите другое настроение.</p></div>';
@@ -225,7 +206,6 @@ const nSeries = films.filter((f) => f.k).length;
     ($('pick-e').querySelector('[data-end]') as HTMLElement).dataset.end = String(e.min);
     $('pick-poster').innerHTML = f.p ? `<img src="${tmdbImg(f.p, 200)}" alt="" onerror="knvImg(this)">` : '';
     $('pick-poster').style.setProperty('--h', String(hue(f.id)));
-    $('pick-n').hidden = rnd;
     $('pick-back').hidden = !rnd;
     $('dice-t').textContent = rnd ? 'Ещё случайный' : 'Не то? Случайный';
   }

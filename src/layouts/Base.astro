@@ -166,6 +166,37 @@ const UMAMI_SRC = import.meta.env.PUBLIC_UMAMI_SRC || 'https://cloud.umami.is/sc
     p.dataset.vt = '1';
   });
   addEventListener('pageshow', named); // вернулись назад — имя больше не нужно
+
+  // ленты: на компьютере стрелки по краям; скрываются у начала и конца
+  const arrow = (dir: string) => `<svg aria-hidden="true" width="20" height="20" viewBox="0 0 256 256" fill="currentColor"><path d="${dir === 'next'
+    ? 'M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z'
+    : 'M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z'}"/></svg>`;
+  document.querySelectorAll<HTMLElement>('.row').forEach((row) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'row-wrap';
+    row.replaceWith(wrap);
+    wrap.append(row);
+    const btns = (['prev', 'next'] as const).map((dir) => {
+      const b = document.createElement('button');
+      b.className = 'row-btn ' + dir;
+      b.type = 'button';
+      b.setAttribute('aria-label', dir === 'next' ? 'Дальше' : 'Назад');
+      b.innerHTML = arrow(dir);
+      b.addEventListener('click', () => row.scrollBy({ left: (dir === 'next' ? 1 : -1) * row.clientWidth * 0.9, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
+      wrap.append(b);
+      return b;
+    });
+    const sync = () => {
+      btns[0].hidden = row.scrollLeft < 8;
+      btns[1].hidden = row.scrollLeft + row.clientWidth > row.scrollWidth - 8;
+      const p = row.querySelector('.poster');
+      if (p) wrap.style.setProperty('--poster-h', p.clientHeight + 'px');
+    };
+    row.addEventListener('scroll', sync, { passive: true });
+    new MutationObserver(() => { row.scrollLeft = 0; sync(); }).observe(row, { childList: true });
+    addEventListener('resize', sync);
+    sync();
+  });
   // карточки, которые дорисовывает браузер, тоже получают время
   // и те, у которых сменилась длительность (карточка «Выбор на сегодня» после кубика)
   new MutationObserver(fill).observe(document.querySelector('main')!, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-end'] });

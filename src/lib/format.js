@@ -123,7 +123,7 @@ const WATCH_NOW = { s: 'по подписке', f: 'бесплатно', a: 'б�
 export function cardHTML(f, base, { i = 0, why = '', time = 0 } = {}) {
   const st = status(f);
   const meta = f.k
-    ? [kindName(f), f.k === 'ms' ? years(f) : seasons(f), st && `<span class="st${st.on ? ' on' : ''}">${st.label.toLowerCase()}</span>`].filter(Boolean).join(' · ')
+    ? [f.k === 'ms' ? `Мини-сериал · ${years(f)}` : seasons(f), st && `<span class="st${st.on ? ' on' : ''}">${st.label.toLowerCase()}</span>`].filter(Boolean).join(' · ')
     : `${f.y} · ${dur(f.min)}`;
   const img = f.p
     ? `<img src="${tmdbImg(f.p, 342)}" alt="" loading="lazy" decoding="async" onerror="knvImg(this)">`
@@ -132,7 +132,6 @@ export function cardHTML(f, base, { i = 0, why = '', time = 0 } = {}) {
   <div class="poster" style="--h:${hue(f.id)}">${img}<span class="ph" aria-hidden="true">${esc(f.t)}</span>${why ? `<span class="why">${why}</span>` : ''}</div>
   <span class="card-t">${esc(f.t)}</span>
   <span class="card-m">${meta}</span>
-  <span class="card-e">IMDb ${f.imdb.toFixed(1)}${timeLine(f, time)}</span>${f.w ? `
-  <span class="card-w">${f.w[1] ? `<img src="${tmdbImg(f.w[1], 32, 'w92')}" alt="" width="16" height="16" loading="lazy" onerror="knvImg(this)">` : ''}${esc(f.w[0])} · ${WATCH_NOW[f.w[2]]}</span>` : ''}
+  <span class="card-e">IMDb ${f.imdb.toFixed(1)}${timeLine(f, time)}${f.w ? `<span class="card-w">${f.w[1] ? `<img src="${tmdbImg(f.w[1], 32, 'w92')}" alt="" width="16" height="16" loading="lazy" onerror="knvImg(this)">` : ''}<span class="sr">${esc(f.w[0])} · ${WATCH_NOW[f.w[2]]}</span></span>` : ''}</span>
 </a>`;
 }

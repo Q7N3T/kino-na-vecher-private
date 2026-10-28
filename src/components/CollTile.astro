@@ -14,12 +14,11 @@ const top = collection(c, 30).filter((f) => f.p).slice(0, 3);
   <b>{c.title}</b><span>{c.sub}</span>
 </a>
 <style>
-  .coll { position: relative; overflow: hidden; padding-right: 160px; }
-  .stack { position: absolute; right: 24px; top: 50%; width: 120px; height: 96px; transform: translateY(-50%); }
-  .st-p { position: absolute; top: 0; left: calc(var(--k) * 32px); width: 64px; aspect-ratio: 2 / 3; border-radius: 8px; overflow: hidden;
-    background: hsl(var(--h) 26% 26%); box-shadow: 0 8px 24px -8px rgba(0, 0, 0, .8); transform: rotate(calc((var(--k) - 1) * 6deg)) translateY(calc(var(--k) * 4px));
+  .coll { position: relative; justify-content: flex-start; gap: 4px; min-height: 0; }
+  .stack { display: block; position: relative; height: 88px; margin-bottom: 16px; }
+  .st-p { position: absolute; top: 0; left: calc(var(--k) * 36px); width: 56px; aspect-ratio: 2 / 3; border-radius: 8px; overflow: hidden;
+    background: hsl(var(--h) 26% 26%); box-shadow: 0 8px 24px -8px rgba(0, 0, 0, .8); transform: rotate(calc((var(--k) - 1) * 6deg));
     transition: transform 500ms var(--ease); }
   .st-p img { width: 100%; height: 100%; object-fit: cover; }
-  .coll:hover .st-p { transform: rotate(calc((var(--k) - 1) * 10deg)) translateY(calc(var(--k) * 4px - 4px)); }
-  @media (max-width: 760px) { .coll { padding-right: 144px; } .stack { right: 16px; } }
+  .coll:hover .st-p { transform: rotate(calc((var(--k) - 1) * 10deg)) translateX(calc((var(--k) - 1) * 4px)); }
 </style>
