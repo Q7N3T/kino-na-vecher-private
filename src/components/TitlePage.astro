@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { similar } from '../lib/data.js';
-import { cardHTML, MOODS, status, years, kindName, dur, plural, num, votes, tmdbImg, hue, initials, cap } from '../lib/format.js';
+import { cardHTML, status, years, kindName, dur, plural, num, votes, tmdbImg, hue, initials } from '../lib/format.js';
 import { watchLink } from '../lib/partners.js';
 
 const { f } = Astro.props;
@@ -15,7 +15,15 @@ const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(
 // где посмотреть: подписка, бесплатно, с рекламой, аренда, покупка (данные JustWatch через TMDB)
 const WATCH = [['s', 'По подписке'], ['f', 'Бесплатно'], ['a', 'Бесплатно с рекламой'], ['r', 'Аренда'], ['b', 'Покупка']];
 const watchGroups = f.wp ? WATCH.filter(([k]) => f.wp[k]?.length).map(([k, label]) => ({ label, items: f.wp[k] })) : [];
-const moodTags = f.m.map((m) => MOODS.find((x) => x.v === m)?.tag).filter(Boolean);
+// две строки фактов вместо чипов и таблицы
+const facts = [kindName(f), f.genres.slice(0, 3).join(', '), years(f),
+  f.k ? [f.ss && `${f.ss} ${plural(f.ss, 'сезон', 'сезона', 'сезонов')}`, f.ep && `${num(f.ep)} ${plural(f.ep, 'серия', 'серии', 'серий')}`].filter(Boolean).join(', ') : dur(f.min),
+  st && (st.label.toLowerCase() + (st.more && !st.on ? ' ' + st.more : ''))].filter(Boolean);
+const score = [`IMDb ${f.imdb.toFixed(1)}`, `${votes(f.v)} ${plural(f.v, 'оценка', 'оценки', 'оценок')}`,
+  f.k && `серия ${dur(f.min)}`, total && `весь сериал ≈ ${Math.round(total / 60)} ч`, f.d?.length && `${f.d.length > 1 ? 'режиссёры' : 'режиссёр'} ${f.d.join(', ')}`].filter(Boolean);
+// главная кнопка — смотреть сразу, если есть где; иначе — «Смотрю сегодня»
+const nowKind = f.wp && ['s', 'f', 'a'].find((k) => f.wp[k]?.length);
+const go = nowKind && { pid: f.wp[nowKind][0][0], name: f.wp[nowKind][0][1], free: nowKind !== 's' };
 const jsonld = {
   '@context': 'https://schema.org', '@type': f.k ? 'TVSeries' : 'Movie', name: f.t, alternateName: f.o, datePublished: String(f.y),
   genre: f.genres, description: f.syn || undefined, image: f.p ? `https://image.tmdb.org/t/p/w500${f.p}` : undefined,
@@ -34,37 +42,24 @@ const jsonld = {
           <span class="ph" aria-hidden="true">{f.t}</span>
         </div>
         <div class="t-info">
-          <div class="chips">
-            {st && <span class={`pill ${st.on ? 'on' : st.on === false ? 'off' : ''}`}><i></i>{st.label}{st.more && !st.on ? ' ' + st.more : ''}</span>}
-            <span class="tag">{kindName(f)}</span>
-            {f.genres.map((g) => <span class="tag">{cap(g)}</span>)}
-          </div>
           <div>
             <h1>{f.t}</h1>
-            <p class="t-orig">{[f.o, years(f)].filter(Boolean).join(' · ')}</p>
+            {f.o && <p class="t-orig">{f.o}</p>}
           </div>
-          <dl class="stats">
-            <div><dt>IMDb</dt><dd>{f.imdb.toFixed(1)}</dd><span>{votes(f.v)} {plural(f.v, 'оценка', 'оценки', 'оценок')}</span></div>
-            {f.k ? <>
-              <div><dt>Сезонов</dt><dd>{f.ss || '—'}</dd><span>{f.ep ? `${num(f.ep)} ${plural(f.ep, 'серия', 'серии', 'серий')}` : ''}{f.ann ? ` · ещё ${f.ann} в планах` : ''}</span></div>
-              <div><dt>Серия</dt><dd>{dur(f.min)}</dd><span>в среднем</span></div>
-              {total ? <div><dt>Весь сериал</dt><dd>{Math.round(total / 60)} ч</dd><span>≈ {Math.ceil(total / 90)} {plural(Math.ceil(total / 90), 'вечер', 'вечера', 'вечеров')} по 1,5 ч</span></div> : null}
-            </> : <>
-              <div><dt>Длительность</dt><dd>{dur(f.min)}</dd><span>{f.y}</span></div>
-              {f.d?.length ? <div class="wide"><dt>{f.d.length > 1 ? 'Режиссёры' : 'Режиссёр'}</dt><dd class="small">{f.d.join(', ')}</dd></div> : null}
-            </>}
-          </dl>
-          <div class="clock">
-            <b data-end={f.min}></b>
-            <span>{f.k ? 'закончится первая серия, если начать прямо сейчас' : 'закончится, если начать прямо сейчас'}{st?.on && st.more ? ` · ${st.more}` : ''}</span>
+          <div class="facts">
+            <p>{facts.join(' · ')}</p>
+            <p>{score.join(' · ')}{st?.on && st.more ? ` · ${st.more}` : ''}</p>
           </div>
+          <p class="clock">{f.k ? 'Первая серия закончится в' : 'Закончится в'} <b data-end={f.min}></b>, если начать сейчас</p>
           <div class="acts">
-            <button class="btn" id="tonight" data-id={f.id} data-umami-event="Смотрю сегодня" data-umami-event-title={f.t}>Смотрю сегодня</button>
+            {go
+              ? <a class="btn" id="tonight" data-id={f.id} href={watchLink(f, go.pid)} rel="noopener sponsored" target="_blank" data-umami-event="Где посмотреть" data-umami-event-provider={go.name} data-umami-event-type="главная кнопка" data-umami-event-title={f.t}>{go.free ? `Смотреть бесплатно в ${go.name}` : `Смотреть в ${go.name}`}</a>
+              : <button class="btn" id="tonight" data-id={f.id} data-umami-event="Смотрю сегодня" data-umami-event-title={f.t}>Смотрю сегодня</button>}
             <button class="btn ghost" id="watch" data-id={f.id} aria-pressed="false" data-umami-event="В мой список" data-umami-event-title={f.t}>
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg><span>В мой список</span></button>
             <a class="btn ghost" href={yt} rel="noopener" target="_blank" data-umami-event="Трейлер" data-umami-event-title={f.t}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"></path></svg>Трейлер</a>
           </div>
-          {watchGroups.length > 0 && (
+          {watchGroups.length > 0 && !(go && watchGroups.length === 1 && watchGroups[0].items.length === 1) && ( /* один кинотеатр — уже на главной кнопке */
             <section class="where" aria-labelledby="h-where">
               <h2 id="h-where">Где посмотреть</h2>
               {watchGroups.map((g) => (
@@ -91,7 +86,10 @@ const jsonld = {
 
   <div class="wrap t-body">
     <div class="t-main">
-      {f.syn && <section><h2>{f.k ? 'О сериале' : 'О фильме'}</h2><p class="syn">{f.syn}</p></section>}
+      <section>
+        {f.syn && <><h2>{f.k ? 'О сериале' : 'О фильме'}</h2><p class="syn">{f.syn}</p></>}
+        <p class="more">Подробнее: <a href={`https://www.imdb.com/title/${f.id}/`} rel="noopener" target="_blank">IMDb ↗</a> · <a href={`https://www.themoviedb.org/redirect?external_source=imdb_id&external_id=${f.id}`} rel="noopener" target="_blank">TMDB ↗</a></p>
+      </section>
       {f.crew.length > 0 && (
         <section>
           <h2>В ролях</h2>
@@ -116,14 +114,6 @@ const jsonld = {
         </section>
       )}
     </div>
-    <aside class="t-side">
-      {moodTags.length > 0 && <div class="box"><h2>Настроение</h2><div class="chips">{moodTags.map((t) => <span class="pill">{t}</span>)}</div></div>}
-      <div class="box links">
-        <h2>Где узнать больше</h2>
-        <a href={`https://www.imdb.com/title/${f.id}/`} rel="noopener" target="_blank">Страница на IMDb ↗</a>
-        <a href={`https://www.themoviedb.org/redirect?external_source=imdb_id&external_id=${f.id}`} rel="noopener" target="_blank">Страница на TMDB ↗</a>
-      </div>
-    </aside>
   </div>
 
   {sim.length > 0 && (
@@ -135,29 +125,23 @@ const jsonld = {
 </Base>
 
 <style>
-  .hero-t { background: radial-gradient(120% 90% at 85% 0%, hsl(var(--h) 35% 16%), transparent 60%), linear-gradient(180deg, #121620, var(--bg)); border-bottom: 1px solid #1C202A; }
-  .hero-t .wrap { padding-top: 28px; padding-bottom: 56px; }
+  .hero-t .wrap { padding-top: 24px; padding-bottom: 48px; }
   .t-row { display: flex; flex-wrap: wrap; gap: 40px 48px; align-items: flex-start; }
-  .t-poster { flex: 0 1 320px; min-width: 220px; margin: 0; border-radius: 16px; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .9); animation: rise .7s cubic-bezier(.2, .8, .2, 1) both; }
-  .t-poster .ph { font-size: 22px; padding: 22px; }
-  .t-info { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
-  .t-info > * { animation: rise .6s cubic-bezier(.2, .8, .2, 1) both; }
-  .t-info > :nth-child(2) { animation-delay: .05s; } .t-info > :nth-child(3) { animation-delay: .1s; } .t-info > :nth-child(4) { animation-delay: .15s; } .t-info > :nth-child(5) { animation-delay: .2s; }
-  h1 { margin: 0; font-size: clamp(36px, 5.4vw, 64px); font-weight: 700; line-height: 1.05; letter-spacing: -.025em; }
-  .t-orig { margin: 8px 0 0; font-size: 19px; color: var(--dim); }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; max-width: 720px; }
-  .stats div { background: #131720; padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; }
-  .stats .wide { grid-column: span 2; }
-  .stats dt { font-size: 13px; color: var(--dim); }
-  .stats dd { margin: 0; font-size: 24px; font-weight: 600; }
-  .stats dd.small { font-size: 17px; line-height: 1.35; padding-top: 4px; }
-  .stats span { font-size: 12px; color: var(--dim); }
-  .clock:has(> b:empty) { display: none; } /* время ещё не посчитано */
-  .clock { display: flex; align-items: center; gap: 18px; padding: 18px 22px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); max-width: 720px; }
-  .clock b { font-size: 32px; font-weight: 600; color: var(--accent); line-height: 1; }
-  .clock span { font-size: 15px; color: var(--muted); line-height: 1.4; }
+  .t-poster { flex: 0 1 320px; min-width: 220px; margin: 0; border-radius: 16px; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .9); animation: rise 700ms var(--ease) both; }
+  .t-poster .ph { font-size: 20px; padding: 24px; }
+  .t-info { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px; padding-top: 8px; }
+  .t-info > * { animation: rise 600ms var(--ease) both; }
+  .t-info > :nth-child(2) { animation-delay: 50ms; } .t-info > :nth-child(3) { animation-delay: 100ms; } .t-info > :nth-child(4) { animation-delay: 150ms; } .t-info > :nth-child(5) { animation-delay: 200ms; }
+  h1 { margin: 0; font-size: 60px; font-weight: 700; line-height: 1; letter-spacing: -.025em; }
+  .t-orig { margin: 8px 0 0; font-size: 18px; line-height: 28px; color: var(--dim); }
+  .facts { display: flex; flex-direction: column; gap: 4px; max-width: 720px; }
+  .facts p { margin: 0; font-size: 16px; line-height: 24px; color: var(--muted); }
+  .facts p + p { color: var(--dim); font-size: 14px; line-height: 20px; }
+  .clock { margin: 0; font-size: 18px; line-height: 28px; color: var(--muted); }
+  .clock b { color: var(--accent); font-weight: 600; }
+  .clock:has(> b:empty) { visibility: hidden; } /* время ещё не посчитано */
   .acts { display: flex; flex-wrap: wrap; gap: 12px; }
-  .where { max-width: 720px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: rgba(22, 26, 34, .6); display: grid; gap: 12px; }
+  .where { max-width: 720px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); display: grid; gap: 12px; }
   .where h2 { margin: 0; font-size: 17px; font-weight: 600; }
   .where-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
   .where-k { font-size: 13px; color: var(--dim); min-width: 92px; }
@@ -167,9 +151,11 @@ const jsonld = {
   .where img { width: 28px; height: 28px; border-radius: 8px; object-fit: cover; }
   .where-src { margin: 0; font-size: 12px; color: var(--dim); }
   .where-src a { color: inherit; }
-  .t-body { display: flex; flex-wrap: wrap; gap: 48px; padding-top: 48px; padding-bottom: 16px; }
-  .t-main { flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 44px; }
-  .t-main h2, .box h2 { margin: 0 0 16px; font-size: 22px; font-weight: 600; }
+  .t-body { padding-top: 48px; padding-bottom: 16px; }
+  .t-main { max-width: 880px; display: flex; flex-direction: column; gap: 48px; }
+  .t-main h2 { margin: 0 0 16px; font-size: 24px; line-height: 32px; font-weight: 600; }
+  .more { margin: 16px 0 0; font-size: 14px; color: var(--dim); }
+  .more a { color: var(--muted); text-decoration: none; } .more a:hover { color: var(--text); }
   .syn { margin: 0; font-size: 17px; line-height: 1.65; color: var(--text-2); max-width: 68ch; }
   .cast { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 24px 20px; }
   .cast a, .cast div { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; text-decoration: none; color: var(--text); }
@@ -185,11 +171,6 @@ const jsonld = {
   .seasons li:first-child { border-top: 0; }
   .seasons small { font-size: 14px; color: var(--dim); font-weight: 400; }
   .seasons .soon span { color: var(--dim); }
-  .t-side { flex: 1 1 300px; display: flex; flex-direction: column; gap: 16px; }
-  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
-  .box h2 { font-size: 17px; margin-bottom: 14px; }
-  .links { display: flex; flex-direction: column; gap: 10px; }
-  .links a { text-decoration: none; }
   /* телефон: небольшой постер рядом с названием, всё остальное — во всю ширину */
   @media (max-width: 760px) {
     .hero-t .wrap { padding-top: 16px; padding-bottom: 32px; }
@@ -198,27 +179,20 @@ const jsonld = {
     .t-info { display: contents; }
     .t-poster { grid-column: 1; grid-row: 1 / span 2; min-width: 0; width: 112px; border-radius: 12px; }
     .t-poster .ph { font-size: 14px; padding: 10px; }
-    .t-info > :nth-child(1) { grid-column: 2; grid-row: 2; align-self: start; }
-    .t-info > :nth-child(2) { grid-column: 2; grid-row: 1; align-self: end; }
+    .t-info > :nth-child(1) { grid-column: 2; grid-row: 1; align-self: end; }
+    .t-info > :nth-child(2) { grid-column: 2; grid-row: 2; align-self: start; }
     .t-info > :nth-child(n+3) { grid-column: 1 / -1; }
-    .t-info .chips { gap: 6px; }
-    .t-info .chips .tag:not(:nth-child(-n+3)) { display: none; } /* на узком экране — статус и пара жанров */
-    .pill, .tag { font-size: 12px; padding: 5px 10px; }
-    h1 { font-size: 28px; line-height: 1.1; }
-    .t-orig { font-size: 15px; margin-top: 4px; }
-    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .stats .wide { grid-column: 1 / -1; }
-    .stats div { padding: 12px 14px; }
-    .stats dd { font-size: 20px; }
-    .clock { padding: 14px 16px; gap: 14px; }
-    .clock b { font-size: 26px; }
-    .clock span { font-size: 14px; }
+    h1 { font-size: 30px; line-height: 36px; }
+    .t-orig { font-size: 14px; line-height: 20px; margin-top: 4px; }
+    .facts p { font-size: 14px; line-height: 20px; }
+    .facts p + p { font-size: 12px; line-height: 16px; }
+    .clock { font-size: 16px; line-height: 24px; }
     .acts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .acts > :first-child { grid-column: 1 / -1; }
     .acts .btn { padding: 0 12px; height: 48px; }
     .t-body { padding-top: 32px; gap: 32px; }
     .t-main { gap: 32px; }
-    .t-main h2, .box h2 { font-size: 20px; margin-bottom: 12px; }
+    .t-main h2 { font-size: 20px; line-height: 28px; margin-bottom: 12px; }
     .syn { font-size: 16px; }
     /* актёры — лентой */
     .cast { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 96px; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory;
@@ -245,7 +219,7 @@ const jsonld = {
   const t = document.getElementById('tonight')!;
   t.addEventListener('click', () => {
     try { localStorage.setItem('knv-today', JSON.stringify({ id, date: new Date().toDateString() })); } catch {}
-    record(id, 'tonight');
-    t.textContent = 'Хорошего вечера!';
+    record(id, 'tonight'); // и «Смотрю сегодня», и «Смотреть в …» — выбор на вечер, сигнал для подбора
+    if (t.tagName === 'BUTTON') t.textContent = 'Хорошего вечера!';
   });
 </script>
