@@ -11,6 +11,18 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - name: Открываются ли фото актёров с Commons (400 и 500 px)
+        run: |
+          for f in 2/2c/Nelly_Alard.jpg e/ef/Johnny_Yong_Bosch_2019.jpg 3/34/Tencho_Gyatso_2009.jpg; do
+            n=${f##*/}
+            for w in 400 500; do
+              echo "$w $(curl -s -o /dev/null -m 20 -A 'kino-na-vecher/1.0 (https://github.com/Q7N3T/kino-na-vecher-private)' -w '%{http_code} %{content_type}' "https://upload.wikimedia.org/wikipedia/commons/thumb/$f/${w}px-$n") $n"
+            done
+          done
+          grep -o 'https://upload.wikimedia.org[^"]*' data/syn/*.json | head -3 | cut -d: -f2- | while read u; do
+            echo "база: $(curl -s -o /dev/null -m 20 -A 'kino-na-vecher/1.0' -w '%{http_code}' "$u") $u"
+            echo "wsrv: $(curl -s -o /dev/null -m 30 -w '%{http_code}' "https://wsrv.nl/?url=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1],safe=""))' "$u")&w=160&h=160&fit=cover&a=attention&output=webp")"
+          done
       - uses: actions/cache@v4
         with:
           path: data/cinema-cache.json
