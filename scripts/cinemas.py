@@ -244,8 +244,15 @@ def explain(url):
 
 
 if __name__ == "__main__":
-    if sys.argv[1:]:  # python3 scripts/cinemas.py <адрес>… — разобрать отдельные адреса, базу не трогать
-        for u in sys.argv[1:]: explain(u)
+    if sys.argv[1:]:  # python3 scripts/cinemas.py <адрес>… — разобрать отдельные адреса, базу не трогать;
+        # find:<слово> — найти адреса со словом в картах сайта кинотеатров
+        for u in sys.argv[1:]:
+            if u.startswith("find:"):
+                for name, site in SITES.items():
+                    try: hits = sorted(p for p in title_pages(sitemap(site), site["page"]) if u[5:].lower() in p.lower())
+                    except Exception as e: hits = [f"карта сайта не открылась: {e}"]
+                    print(name, u[5:], "→", *hits[:15])
+            else: explain(u)
         sys.exit()
     # пробный запуск на нынешней базе: сколько ссылок нашлось и примеры — базу не меняет
     import random
