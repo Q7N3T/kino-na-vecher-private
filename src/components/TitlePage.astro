@@ -113,9 +113,15 @@ const jsonld = {
       {f.k && f.sx.length > 0 && (
         <section>
           <h2>Сезоны</h2>
-          <ol class="seasons">
-            {f.sx.map(([n, eps, y1, y2]) => <li><span>Сезон {n}</span><small>{[y1 && (y2 && y2 !== y1 ? `${y1}–${y2}` : y1), `${eps} ${plural(eps, 'серия', 'серии', 'серий')}`].filter(Boolean).join(' · ')}</small></li>)}
-            {f.ann ? <li class="soon"><span>{f.ann > 1 ? `Сезоны ${f.ss + 1}–${f.ss + f.ann}` : `Сезон ${f.ss + 1}`}</span><small>анонсированы</small></li> : null}
+          <ol class="seasons" style={`--max:${Math.max(...f.sx.map((s) => s[1]))}`}>
+            {f.sx.map(([n, eps, y1, y2]) => (
+              <li style={`--eps:${eps}`}>
+                <small>Сезон</small><b>{n}</b>
+                <span>{eps} {plural(eps, 'серия', 'серии', 'серий')}{y1 ? ` · ${y2 && y2 !== y1 ? `${y1}–${y2}` : y1}` : ''}</span>
+                <i aria-hidden="true"></i>
+              </li>
+            ))}
+            {f.ann ? <li class="soon"><small>{f.ann > 1 ? 'Сезоны' : 'Сезон'}</small><b>{f.ann > 1 ? `${f.ss + 1}–${f.ss + f.ann}` : f.ss + 1}</b><span>анонсирован{f.ann > 1 ? 'ы' : ''}</span></li> : null}
           </ol>
         </section>
       )}
@@ -191,11 +197,16 @@ const jsonld = {
   .face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .who { display: flex; flex-direction: column; gap: 2px; font-weight: 500; font-size: 15px; line-height: 1.3; }
   .who small { font-size: 13px; color: var(--dim); font-weight: 400; }
-  .seasons { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
-  .seasons li { display: flex; justify-content: space-between; gap: 16px; padding: 15px 20px; background: #12151D; border-top: 1px solid #1C202A; font-weight: 500; }
-  .seasons li:first-child { border-top: 0; }
-  .seasons small { font-size: 14px; color: var(--dim); font-weight: 400; }
-  .seasons .soon span { color: var(--dim); }
+  /* сезоны — карточками, как остальное на сайте; полоска — сколько серий относительно самого длинного сезона */
+  .seasons { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .seasons li { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 16px 20px 20px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+  .seasons small { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+  .seasons b { font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: -.02em; }
+  .seasons span { font-size: 14px; line-height: 20px; color: var(--muted); }
+  .seasons i { position: absolute; left: 20px; right: 20px; bottom: 10px; height: 3px; border-radius: 9999px; background: var(--surface-2); }
+  .seasons i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: calc(var(--eps) / var(--max) * 100%); border-radius: inherit; background: var(--accent); }
+  .seasons .soon { background: transparent; border-style: dashed; border-color: var(--line-2); }
+  .seasons .soon b, .seasons .soon span { color: var(--dim); }
   /* телефон: небольшой постер рядом с названием, всё остальное — во всю ширину */
   @media (max-width: 760px) {
     .hero-t .wrap { padding-top: 16px; padding-bottom: 32px; }
@@ -228,7 +239,10 @@ const jsonld = {
     .face b { font-size: 20px; }
     .who { font-size: 13px; }
     .who small { font-size: 12px; }
-    .seasons li { padding: 13px 16px; }
+    .seasons { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .seasons li { padding: 12px 16px 18px; }
+    .seasons b { font-size: 26px; line-height: 32px; }
+    .seasons i { left: 16px; right: 16px; }
   }
 </style>
 

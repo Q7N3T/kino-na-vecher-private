@@ -39,7 +39,7 @@ const commons = a.p?.startsWith('https://upload.wikimedia.org/') && 'https://com
   ))}
 </Base>
 <style>
-  .a-hero { background: radial-gradient(100% 90% at 80% 0%, hsl(var(--h) 30% 15%), transparent 60%), linear-gradient(180deg, #121620, var(--bg)); border-bottom: 1px solid #1C202A; }
+  .a-hero { background: radial-gradient(100% 90% at 80% 0%, hsl(var(--h) 30% 15%), transparent 60%), linear-gradient(180deg, var(--surface), var(--bg)); border-bottom: 1px solid var(--line); }
   .a-hero .wrap { padding-top: 28px; padding-bottom: 48px; }
   .a-row { display: flex; flex-wrap: wrap; gap: 32px; align-items: center; }
   .face { width: 200px; height: 200px; border-radius: 50%; position: relative; overflow: hidden; display: grid; place-items: center; flex-shrink: 0; background: linear-gradient(150deg, hsl(var(--h) 35% 30%), hsl(calc(var(--h) + 40) 30% 15%)); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .9); animation: rise .6s ease both; }
