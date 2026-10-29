@@ -10,6 +10,8 @@
 """
 import argparse, concurrent.futures as cf, gzip, json, os, re, sys, time, urllib.parse, urllib.request
 
+from cinemas import cinema_links
+
 BASE = "https://datasets.imdbws.com/"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "films.js")
@@ -419,7 +421,7 @@ def write(films):
         f["genres"] = [GENRES_RU.get(x, x.lower()) for x in f.pop("g")]
         if f["o"] == f["t"]: f.pop("o")
         f.pop("hs", None)
-        extra = {k: v for k, v in (("s", f.pop("syn", None)), ("c", f.pop("cr", None)), ("x", f.pop("sx", None)), ("w", f.pop("wp", None))) if v}
+        extra = {k: v for k, v in (("s", f.pop("syn", None)), ("c", f.pop("cr", None)), ("x", f.pop("sx", None)), ("w", f.pop("wp", None)), ("l", f.pop("ln", None))) if v}
         if extra:
             parts[syn_part(f["id"])][f["id"]] = extra
             f["hs"] = 1
@@ -452,6 +454,7 @@ def load_existing():
         if x and x.get("c"): f["cr"] = x["c"]
         if x and x.get("w"): f["wp"] = x["w"]
         if x and x.get("x"): f["sx"] = x["x"]
+        if x and x.get("l"): f["ln"] = x["l"]
         films[f["id"]] = f
     return films
 
@@ -465,6 +468,7 @@ if __name__ == "__main__":
         films = load_existing()
         tmdb(films)
         kinopoisk(films)
+        cinema_links(films)
     else:
         films = build_imdb(a.min_votes)
     write(films)

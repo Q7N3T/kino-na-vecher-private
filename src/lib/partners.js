@@ -2,9 +2,10 @@
 // 1) партнёрская ссылка — когда кинотеатр или партнёрская сеть выдаст её, впишите в PARTNERS
 //    по номеру провайдера TMDB: {q} — название фильма, {id} — номер IMDb, {slug} — оригинальное
 //    название латиницей без пробелов и знаков (так устроены адреса FLEX: kinoflex.ru/movie/thesopranos);
-// 2) поиск этого фильма прямо на сайте кинотеатра (SEARCH) — ссылок на саму карточку фильма
-//    TMDB не даёт, поиск по русскому названию — ближайшее к ней;
-// 3) страница «Где посмотреть» TMDB / JustWatch — для остальных.
+// 2) страница фильма на сайте кинотеатра: Кинопоиск — по номеру из Wikidata (f.kp), FLEX, Иви,
+//    Start и KION — из их карт сайта (f.ln, собирает scripts/cinemas.py);
+// 3) поиск этого фильма прямо на сайте кинотеатра (SEARCH) — по русскому названию;
+// 4) страница «Где посмотреть» TMDB / JustWatch — для остальных.
 // Номер провайдера — в data/syn/*.json: w → [номер, название, логотип].
 // Адреса поиска собраны вручную и могут поменяться на стороне кинотеатра — проверяйте кликом.
 export const PARTNERS = {};
@@ -14,6 +15,9 @@ export const PARTNERS = {};
 const DIRECT = {
   117: (f) => f.kp && `https://www.kinopoisk.ru/film/${f.kp}/`,
 };
+// кинотеатры, чьи страницы фильмов найдены в карте сайта (f.ln по этим ключам), — как они называются
+const SITEMAP = { flex: 'FLEX', ivi: 'Иви', start: 'Start', kion: 'KION' };
+const sitemapKey = (name) => ({ иви: 'ivi', ivi: 'ivi', kion: 'kion', start: 'start', flex: 'flex' })[name.toLowerCase()];
 
 const SEARCH = {
   117: ['Кинопоиск', 'https://www.kinopoisk.ru/index.php?kp_query={q}'],
@@ -40,30 +44,29 @@ const ELSEWHERE = [
   ['ivi', 'Иви', 'https://www.ivi.ru/search/?q={q}'],
   [115], ['wink', 'Wink', 'https://wink.ru/search?query={q}'], ['kion', 'KION', 'https://kion.ru/search?text={q}'],
   ['start', 'Start', 'https://start.ru/search?q={q}'], [570], [116], [557],
-  ['flex', 'FLEX', 'https://kinoflex.ru/movie/{slug}'], // адрес страницы угадан по примеру — у части фильмов может не совпасть
 ];
 
 const slug = (f) => String(f.o || f.t).toLowerCase().replace(/[^a-z0-9]+/g, '');
 const fill = (t, f) => t.replaceAll('{q}', encodeURIComponent(f.t)).replaceAll('{id}', f.id).replaceAll('{slug}', slug(f));
+const direct = (f, providerId, name = '') => DIRECT[providerId]?.(f) || f.ln?.[sitemapKey(name)];
 
 // название для людей: по-русски, если кинотеатр знаком (TMDB пишет «Kinopoisk», «Amediateka»)
 export const providerName = (providerId, name) => SEARCH[providerId]?.[0] || name;
 
 export function watchLink(f, providerId, name = '') {
-  if (!PARTNERS[providerId] && DIRECT[providerId]?.(f)) return DIRECT[providerId](f);
+  if (!PARTNERS[providerId] && direct(f, providerId, name)) return direct(f, providerId, name);
   const t = PARTNERS[providerId] || SEARCH[providerId]?.[1] || BY_NAME[name.toLowerCase()];
   return t ? fill(t, f) : f.wp.l;
 }
 
 // shown — номера и названия (в нижнем регистре) кинотеатров, которые уже есть в «Где посмотреть»
 export function searchLinks(f, shown = []) {
-  return ELSEWHERE.filter(([k, name, url]) => !shown.includes(k) && !shown.includes((name || SEARCH[k][0]).toLowerCase())
-      && !(url?.includes('{slug}') && !slug(f))) // нет латинского названия — нет адреса FLEX
+  return ELSEWHERE.filter(([k, name]) => !shown.includes(k) && !shown.includes((name || SEARCH[k][0]).toLowerCase()))
     .map(([k, name, url]) => (typeof k === 'number' ? { name: SEARCH[k][0], url: watchLink(f, k) } : { name, url: fill(url, f) }));
 }
 
 // Строки блока «Где посмотреть». rows — кинотеатры, где фильм есть точно (JustWatch) или где известна
-// его страница (Кинопоиск по номеру из Wikidata, FLEX по оригинальному названию); один кинотеатр —
+// его страница (Кинопоиск по номеру из Wikidata, остальные — из карт сайта); один кинотеатр —
 // одна строка со всеми способами. more — остальные кинотеатры, туда ведёт поиск по названию.
 // logos — логотипы кинотеатров по номеру, собранные по всей базе.
 const KINDS = [['s', 'по подписке'], ['f', 'бесплатно'], ['a', 'бесплатно с рекламой'], ['r', 'аренда'], ['b', 'покупка']];
@@ -80,7 +83,9 @@ export function watchRows(f, logos = {}) {
   const rows = [...byPid.values()].map(({ kinds, ...r }) => ({ ...r, sub: cap(kinds.join(', ')) }));
   if (f.kp && !rows.some((r) => r.pid === 117))
     rows.push({ pid: 117, name: 'Кинопоиск', logo: logos[117], sub: 'Страница фильма', url: DIRECT[117](f) });
-  if (slug(f)) rows.push({ pid: 'flex', name: 'FLEX', logo: null, sub: 'Страница фильма', url: fill('https://kinoflex.ru/movie/{slug}', f) });
-  const shown = rows.flatMap((r) => [r.pid, r.name.toLowerCase()]);
+  for (const [k, name] of Object.entries(SITEMAP))
+    if (f.ln?.[k] && !rows.some((r) => sitemapKey(r.name) === k))
+      rows.push({ pid: k, name, logo: null, sub: 'Страница фильма', url: f.ln[k] });
+  const shown = rows.flatMap((r) => [r.pid, r.name.toLowerCase(), sitemapKey(r.name)]);
   return { rows, more: searchLinks(f, shown) };
 }

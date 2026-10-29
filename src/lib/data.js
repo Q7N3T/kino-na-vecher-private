@@ -67,6 +67,7 @@ export function load() {
     f.crew = (x.c || []).filter((c) => c[0]).map(([n, r, p]) => ({ n, r: r || '', p: p || '' }));
     f.sx = x.x || [];
     f.wp = x.w || null; // где посмотреть в России: {l, s, f, a, r, b}
+    f.ln = x.l || null; // страницы фильма в кинотеатрах из их карт сайта: {flex, ivi, start, kion}
     f.w = watchNow(f.wp);
     if (!f.crew.length) f.crew = (f.cast || []).map((c) => ({ n: c.n, r: c.r || '', p: '' }));
   }

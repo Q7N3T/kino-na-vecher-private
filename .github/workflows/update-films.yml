@@ -33,10 +33,17 @@ jobs:
           key: tmdb-cache-${{ github.run_id }}
           restore-keys: tmdb-cache-
 
+      # и проверенные страницы кинотеатров — чтобы не открывать их каждую неделю
+      - uses: actions/cache@v4
+        with:
+          path: data/cinema-cache.json
+          key: cinema-cache-${{ github.run_id }}
+          restore-keys: cinema-cache-
+
       - name: Собрать базу из IMDb
         run: python3 scripts/build_films.py
 
-      - name: Добавить постеры, описания и популярность из TMDB
+      - name: Добавить постеры, описания, популярность из TMDB и ссылки на кинотеатры
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: |

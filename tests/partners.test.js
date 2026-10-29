@@ -19,19 +19,13 @@ test('партнёрская ссылка важнее поиска', () => {
   finally { delete PARTNERS[115]; }
 });
 
-test('поискать в других кинотеатрах: без тех, что уже есть в «Где посмотреть», с Кинопоиском и FLEX', () => {
+test('поискать в других кинотеатрах: без тех, что уже есть в «Где посмотреть», с Кинопоиском', () => {
   const links = searchLinks(f, [115]);
   assert.ok(links.length >= 5);
   assert.ok(!links.some((l) => l.name === 'Okko'));
   assert.ok(links.some((l) => l.name === 'Иви' && l.url.includes(encodeURIComponent('Друзья'))));
   assert.ok(links.some((l) => l.name === 'Кинопоиск' && l.url.includes('kinopoisk.ru')));
-  assert.ok(links.some((l) => l.name === 'FLEX'));
-});
-
-test('FLEX — сразу страница фильма по оригинальному названию, как kinoflex.ru/movie/thesopranos', () => {
-  const sopranos = { id: 'tt0141842', t: 'Клан Сопрано', o: 'The Sopranos', wp: null };
-  assert.equal(searchLinks(sopranos).find((l) => l.name === 'FLEX').url, 'https://kinoflex.ru/movie/thesopranos');
-  assert.equal(searchLinks({ id: 'tt1', t: 'Тёмный рыцарь', o: 'The Dark Knight: Rises!' }).find((l) => l.name === 'FLEX').url, 'https://kinoflex.ru/movie/thedarkknightrises');
+  assert.ok(!links.some((l) => l.name === 'FLEX'), 'у FLEX нет поиска по адресу, а угаданная страница бывает пустой');
 });
 
 test('кинотеатр под незнакомым номером узнаётся по названию; в «Поискать ещё» не повторяется', () => {
@@ -55,13 +49,34 @@ test('Кинопоиск — прямо страница фильма, когд�
 
 test('строки «Где посмотреть»: один кинотеатр — одна строка со всеми способами; Кинопоиск и FLEX — страница фильма', async () => {
   const { watchRows } = await import('../src/lib/partners.js');
-  const film = { ...f, o: 'Friends', kp: 77044, wp: { l: 'x', s: [[115, 'Okko', '/okko.png']], r: [[2, 'Apple TV Store', '/a.png']], b: [[2, 'Apple TV Store', '/a.png']] } };
+  const film = { ...f, o: 'Friends', kp: 77044, ln: { flex: 'https://kinoflex.ru/movie/friends' },
+    wp: { l: 'x', s: [[115, 'Okko', '/okko.png']], r: [[2, 'Apple TV Store', '/a.png']], b: [[2, 'Apple TV Store', '/a.png']] } };
   const { rows, more } = watchRows(film, { 117: '/kp.png' });
   assert.deepEqual(rows.map((r) => [r.name, r.sub]), [['Okko', 'По подписке'], ['Apple TV', 'Аренда, покупка'], ['Кинопоиск', 'Страница фильма'], ['FLEX', 'Страница фильма']]);
   assert.equal(rows[2].logo, '/kp.png', 'логотип из общей таблицы, даже если JustWatch о фильме не знает');
   assert.equal(rows[2].url, 'https://www.kinopoisk.ru/film/77044/');
+  assert.equal(rows[3].url, 'https://kinoflex.ru/movie/friends');
   assert.ok(!more.some((l) => ['Okko', 'Кинопоиск', 'FLEX'].includes(l.name)), 'в «Поискать» — только остальные');
   assert.ok(more.some((l) => l.name === 'Иви'));
+});
+
+test('страницы из карт сайта: кинотеатр из JustWatch ведёт сразу на фильм, остальные — отдельной строкой', async () => {
+  const { watchRows } = await import('../src/lib/partners.js');
+  const film = { ...f, ln: { ivi: 'https://www.ivi.ru/watch/druzya', start: 'https://start.ru/watch/druzya', kion: 'https://kion.ru/serial/druzya' },
+    wp: { l: 'x', s: [[9113, 'ivi', '/ivi.png']] } };
+  const { rows, more } = watchRows(film, {});
+  assert.deepEqual(rows.map((r) => [r.name, r.sub, r.url]), [
+    ['ivi', 'По подписке', 'https://www.ivi.ru/watch/druzya'],
+    ['Start', 'Страница фильма', 'https://start.ru/watch/druzya'],
+    ['KION', 'Страница фильма', 'https://kion.ru/serial/druzya'],
+  ]);
+  assert.ok(!more.some((l) => ['Иви', 'Start', 'KION'].includes(l.name)));
+  assert.equal(watchLink(film, 9113, 'ivi'), 'https://www.ivi.ru/watch/druzya');
+});
+
+test('без страницы из карты сайта FLEX не показываем: угаданный адрес бывает пустым', async () => {
+  const { watchRows } = await import('../src/lib/partners.js');
+  assert.ok(!watchRows({ ...f, wp: null }, {}).rows.some((r) => r.name === 'FLEX'));
 });
 
 test('строки «Где посмотреть» без данных: только то, что знаем точно, остальное — поиск', async () => {

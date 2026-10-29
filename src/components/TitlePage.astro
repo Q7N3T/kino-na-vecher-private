@@ -76,7 +76,7 @@ const jsonld = {
               </ul>
             )}
             <p class="w-more">{watch.length ? 'Нет нужного? Поискать в' : 'Поискать в'}: {searchMore.map((l, i) => <>{i > 0 && ', '}<a href={l.url} rel="noopener" target="_blank" data-umami-event="Поискать в кинотеатре" data-umami-event-provider={l.name} data-umami-event-title={f.t}>{l.name}</a></>)}</p>
-            <p class="where-src">Наличие — по данным <a href="https://www.justwatch.com" rel="noopener" target="_blank">JustWatch</a>, страницы на Кинопоиске — по Wikidata.</p>
+            <p class="where-src">Наличие — по данным <a href="https://www.justwatch.com" rel="noopener" target="_blank">JustWatch</a>, адреса страниц — по Wikidata и картам сайтов кинотеатров.</p>
           </section>
           {f.syn && <p class="syn">{f.syn}</p>}
           <p class="more">Подробнее: <a href={`https://www.imdb.com/title/${f.id}/`} rel="noopener" target="_blank">IMDb ↗</a> · <a href={`https://www.themoviedb.org/redirect?external_source=imdb_id&external_id=${f.id}`} rel="noopener" target="_blank">TMDB ↗</a></p>
