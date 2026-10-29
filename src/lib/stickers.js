@@ -14,7 +14,8 @@ export const STICKERS = {
   laugh: face('<path d="M10.5 13.5q1.5-1.8 3 0M18.5 13.5q1.5-1.8 3 0"/><path d="M10.5 18h11a5.5 5.5 0 0 1-11 0z"/>'),
   nerve: face(dot(12.5, 14) + dot(19.5, 14) + '<path d="M11 21l2-1.5 2 1.5 2-1.5 2 1.5 2-1.5"/><path d="M26 4.5s2.4 2.9 2.4 4.4a2.4 2.4 0 0 1-4.8 0c0-1.5 2.4-4.4 2.4-4.4z"/>'),
   sad: face('<path d="M10.5 13.8q1.5 1.6 3 0M18.5 13.8q1.5 1.6 3 0"/><path d="M12.8 21.8q3.2-2.8 6.4 0"/><path d="M22.4 16.4s1.3 1.7 1.3 2.6a1.3 1.3 0 0 1-2.6 0c0-.9 1.3-2.6 1.3-2.6z" fill="currentColor" stroke="none"/>'),
-  think: face(dot(13, 13) + dot(19, 13) + '<path d="M13 20.5h5"/>' + '<circle cx="25.5" cy="6.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="28.5" cy="2.8" r="1" fill="currentColor" stroke="none"/>'),
+  // «хм»: одна бровь приподнята, рот ровный — всё внутри лица, как у остальных
+  think: face(dot(12.5, 15) + dot(19.5, 15) + '<path d="M10.8 11.8h3.4M18.2 10.9q1.7-1.3 3.4 0"/><path d="M13.2 21h5.2"/>'),
   inspire: face(star(12.5, 13.5, 2.6) + star(19.5, 13.5, 2.6) + '<path d="M11.5 19q4.5 4 9 0"/>'),
   anyMood: face(dot(12.5, 14) + dot(19.5, 14) + '<path d="M12.5 19.5q3.5 2.6 7 0"/>'),
   // что смотрим
