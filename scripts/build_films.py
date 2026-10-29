@@ -304,9 +304,11 @@ def tmdb(films):
         if not tv:
             m = next((r for r in exact if abs(year(r) - y) <= 1), None)
             return m and {"p": m.get("poster_path"), "ov": m.get("overview")}
-        m = next((r for r in exact if abs(year(r) - y) <= 1), None)
+        m = next((r for r in exact if abs(year(r) - y) <= 1 and r.get("poster_path")), None)
         if m: return {"p": m.get("poster_path"), "ov": m.get("overview")}
-        m = (exact or prefix or [None])[0]
+        # точное совпадение без обложки (TMDB завёл «Blackadder the Third» пустой записью) — хуже, чем
+        # шоу, чьим сезоном это было: у шоу есть обложка сезона того же года
+        m = ([r for r in exact if r.get("poster_path")] or prefix or exact or [None])[0]
         if not m: return None
         det = api(f"https://api.themoviedb.org/3/tv/{m['id']}", {"language": "ru-RU"}) or {}
         sea = next((x for x in det.get("seasons") or [] if x.get("season_number") and (x.get("air_date") or "")[:4] == str(y)), None)
@@ -338,7 +340,7 @@ def tmdb(films):
                     if wp: v["wp"] = wp
                     v["cv"] = CAST_VER
                     return tid, v
-                if not m:
+                if not m or not m.get("poster_path"):  # не нашёлся или нашёлся без обложки — ищем по названию
                     found = {k: len(x) for k, x in j.items() if isinstance(x, list) and x}
                     alt = by_title(tid)
                     print(f"  TMDB не знает {tid} «{films[tid].get('o') or films[tid]['t']}» ({found or 'пусто'}); "
