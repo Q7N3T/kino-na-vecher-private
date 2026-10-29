@@ -1,5 +1,6 @@
-// Подборка «на сегодня»: не просто самое популярное, а смесь проверенных хитов, находок
-// (высокий рейтинг при небольшой известности) и — если есть история — того, что по вкусу.
+// Подборка «на сегодня»: золотая середина — больше всего хорошего кино, о котором многие слышали,
+// но не все видели; немного громких хитов, свежего, классики и находок (высокий рейтинг при
+// небольшой известности) и — если есть история — того, что по вкусу.
 // Плюс разнообразие: одна франшиза — одно место, похожие подряд не идут.
 // Работает и в браузере, и в Node (для проверки на всей базе).
 
@@ -81,6 +82,8 @@ export function curate(list, { time = 999, mood = 'any', prof = null, day = '', 
     fresh: (f) => 0.45 * quality(f) + 0.35 * pop(f) + 0.2 * fit(f) + 0.06 * jitter.get(f.id),
     // классика: до 2000 года, с сильным рейтингом; каждый день — другая
     classic: (f) => 0.6 * quality(f) + 0.15 * pop(f) + 0.25 * fit(f) + 0.1 * jitter.get(f.id),
+    // середина: хорошо оценено и на слуху, но не самое громкое; меняется каждый день
+    mid: (f) => 0.55 * quality(f) + 0.25 * fit(f) + 0.2 * jitter.get(f.id),
     // находки: сильный рейтинг при небольшой известности; меняются каждый день
     gem: (f) => (0.55 * quality(f) + 0.25 * fit(f)) * (1.15 - pop(f)) + 0.25 * jitter.get(f.id),
     // по вкусу: схожесть с историей, но тоже не ниже приличного качества
@@ -92,20 +95,31 @@ export function curate(list, { time = 999, mood = 'any', prof = null, day = '', 
   const popCut = pop([...pool].sort((a, b) => b.pp - a.pp)[Math.min(pool.length - 1, 40)]);
   const ru = (f) => /[а-яё]/i.test(f.t);
   const docOk = (f) => !f.genres.includes('документальный') || mood === 'think' || mood === 'inspire';
-  const isGem = (f) => pop(f) < popCut && f.imdb >= 7.3 && f.v >= 20000 && ru(f) && docOk(f);
+  // находки — не старше 1970-го (немое кино и довоенные комедии — для киноклуба, а не на вечер) и не
+  // больше 250 тыс. оценок: «Один дома» с заниженной популярностью TMDB — не находка
+  const isGem = (f) => pop(f) < popCut && f.imdb >= 7.3 && f.v >= 20000 && f.v < 250000 && f.y >= 1970 && ru(f) && docOk(f);
+  // место в популярности среди подходящего: 0 — самое громкое, 1 — самое тихое
+  const byPop = [...pool].sort((a, b) => b.pp - a.pp);
+  const pct = new Map(byPop.map((f, i) => [f.id, i / Math.max(1, byPop.length - 1)]));
+  // середина: не первые 15% (их и так все видели), но в первых 60% по известности; с 1975-го
+  const isMid = (f) => pct.get(f.id) > 0.15 && pct.get(f.id) <= 0.6 && f.imdb >= 7.2 && f.v >= 30000
+    && (f.y >= 1975 || mood === 'think') && ru(f) && docOk(f);
   const sorted = (xs, k) => xs.sort((a, b) => score[k](b) - score[k](a));
 
   const ranked = {
     hit: sorted([...pool], 'hit'),
-    fresh: sorted(pool.filter((f) => f.y >= year - 5 && rating(f) >= 7 && ru(f) && docOk(f)), 'fresh'),
+    // свежее — от 40 тыс. оценок: 9,2 у новинки с 20 тыс. — ещё не проверено временем
+    fresh: sorted(pool.filter((f) => f.y >= year - 5 && f.v >= 40000 && rating(f) >= 7 && ru(f) && docOk(f)), 'fresh'),
+    mid: sorted(pool.filter(isMid), 'mid'),
     classic: sorted(pool.filter((f) => f.y < 2000 && f.imdb >= 7.8 && ru(f) && docOk(f)), 'classic'),
     gem: sorted(pool.filter(isGem), 'gem'),
     taste: hasTaste ? sorted([...pool], 'taste') : [],
   };
-  // порядок мест в ленте: больше всего находок, немного свежего и классики, «по вкусу» — когда есть история
+  // порядок мест в ленте: половина — середина, по два свежего и находки, один хит и одна классика;
+  // «по вкусу» — когда есть история
   const plan = hasTaste
-    ? ['taste', 'gem', 'fresh', 'taste', 'gem', 'classic', 'taste', 'gem', 'fresh', 'gem', 'taste', 'gem']
-    : ['fresh', 'gem', 'gem', 'classic', 'fresh', 'gem', 'gem', 'fresh', 'gem', 'classic', 'gem', 'gem'];
+    ? ['taste', 'mid', 'hit', 'taste', 'gem', 'mid', 'taste', 'fresh', 'mid', 'taste', 'classic', 'mid']
+    : ['hit', 'mid', 'gem', 'mid', 'fresh', 'mid', 'classic', 'mid', 'gem', 'mid', 'fresh', 'mid'];
 
   const chosen = [], used = new Set(), seenFr = [];
   const take = (kind) => {
@@ -132,7 +146,7 @@ export function curate(list, { time = 999, mood = 'any', prof = null, day = '', 
   return { items: chosen, rest };
 }
 
-// Из кого выбирается выбор дня: до четырёх лучших находок (или «по вкусу») с рейтингом от 7,2.
+// Из кого выбирается выбор дня: до четырёх лучших находок, середины или «по вкусу» с рейтингом от 7,2.
 // Уже выбранное раньше не предлагаем; открытое — только если отложено в «Мой список».
 export function dailyCandidates(list, { time = 999, mood = 'any', prof = null, watch = [], day = '' } = {}) {
   const wl = new Set(watch);
@@ -141,7 +155,7 @@ export function dailyCandidates(list, { time = 999, mood = 'any', prof = null, w
   // curate прячет всё открытое раньше — отложенное в «Мой список» для выбора дня открытым не считаем
   const forPick = prof && { ...prof, seen: new Set([...seen].filter((id) => !wl.has(id) || picked.has(id))) };
   const { items } = curate(cand, { time, mood, prof: forPick, day: day + '|pick' });
-  const best = items.filter((x) => x.why === 'gem' || x.why === 'taste');
+  const best = items.filter((x) => x.why === 'gem' || x.why === 'mid' || x.why === 'taste');
   return (best.length ? best : items).slice(0, 4).map((x) => x.f);
 }
 

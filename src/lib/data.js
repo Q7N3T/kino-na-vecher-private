@@ -38,6 +38,14 @@ export function watchNow(wp) {
 
 let cache;
 
+// медиана популярности у тайтлов с ближайшим числом оценок; known отсортирован по v
+export function popByVotes(known, v, n = 40) {
+  let lo = 0, hi = known.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (known[m].v < v) lo = m + 1; else hi = m; }
+  const near = known.slice(Math.max(0, lo - n / 2), lo + n / 2).map((f) => f.pop).sort((a, b) => a - b);
+  return near.length ? near[near.length >> 1] : 0;
+}
+
 export function load() {
   if (cache) return cache;
   const src = fs.readFileSync(path.join(ROOT, 'data/films.js'), 'utf8');
@@ -73,6 +81,12 @@ export function load() {
     // один актёр — одна карточка: IMDb и TMDB бывает пишут роль дважды по-разному («Uryu» / «Uryuu»)
     const seenNames = new Set();
     f.crew = f.crew.filter((c) => !seenNames.has(slugify(c.n)) && seenNames.add(slugify(c.n)));
+  }
+  // нет популярности TMDB (тайтл не нашёлся там по номеру IMDb: «Тьма», «Могила светлячков») — не ноль,
+  // иначе он «никому не известен» и попадает в находки; берём медиану у 40 тайтлов с похожим числом оценок
+  if (tmdbPop) {
+    const known = films.filter((f) => f.pop).sort((a, b) => a.v - b.v);
+    for (const f of films) if (!f.pop) f.pp = popByVotes(known, f.v);
   }
   films.sort((a, b) => b.pp - a.pp);
 

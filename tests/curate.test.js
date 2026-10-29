@@ -113,3 +113,23 @@ test('популярное сейчас: по популярности, от 7 �
   assert.deepEqual(t(popularNow(list, { kind: 'series' })), ['Сериал']);
   assert.equal(popularNow(list, { n: 2 }).length, 2);
 });
+
+test('нет популярности TMDB — медиана у тайтлов с похожим числом оценок, а не ноль', async () => {
+  const { popByVotes } = await import('../src/lib/data.js');
+  const known = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => ({ v: i * 1000, pop: i }));
+  assert.equal(popByVotes(known, 5500, 4), 6); // соседи 4,5,6,7 тыс. — медиана 6
+  assert.equal(popByVotes(known, 999999, 4), 10, 'больше всех — как самые оценённые');
+  assert.equal(popByVotes([], 5000), 0);
+});
+
+test('золотая середина: половина ленты — известное, но не самое громкое; находки — не немое кино и не хиты', () => {
+  const list = [];
+  for (let i = 0; i < 300; i++)
+    list.push({ id: 'tt' + i, t: 'Ф' + i + ' кино', y: i % 3 ? 1995 + (i % 25) : 1930 + (i % 30), min: 100, m: ['laugh'], genres: ['комедия', 'g' + (i % 9)],
+      imdb: 7.3 + (i % 15) / 10, v: 30000 + ((300 - i) * 4000), pp: 300 - i, d: ['Режиссёр ' + i] });
+  const { items } = curate(list, { time: 130, mood: 'laugh', day: 'd1' });
+  const why = (k) => items.filter((x) => x.why === k);
+  assert.ok(why('mid').length >= 5, 'середины — больше всего');
+  assert.ok(why('mid').every((x) => x.f.pp <= 300 - 0.15 * 299 && x.f.pp >= 300 - 0.6 * 299 - 1), 'середина — не первые 15% и не дальше 60%');
+  assert.ok(why('gem').every((x) => x.f.y >= 1970 && x.f.v < 250000), 'находки — с 1970-го и не громкие');
+});
