@@ -4,7 +4,7 @@
 // а не точное совпадение жанров: схожесть смешивается с рейтингом и популярностью.
 
 const KEY = 'knv-taste';
-const WEIGHT = { view: 1, watch: 3, tonight: 4 };
+const WEIGHT = { view: 1, watch: 3, like: 3, tonight: 4 }; // like — отмечено в «Расскажите о себе» при первом заходе
 const HALF_LIFE = 21 * 864e5; // старые действия весят меньше: вдвое за три недели
 const MAX_EVENTS = 300;
 
@@ -16,6 +16,28 @@ export function record(id, kind = 'view') {
   const ev = read().filter((e) => !(e.id === id && e.k === kind)); // повторный просмотр той же страницы — освежаем, а не копим
   ev.push({ id, k: kind, t: Date.now() });
   try { localStorage.setItem(KEY, JSON.stringify(ev.slice(-MAX_EVENTS))); } catch {}
+}
+
+export const hasHistory = () => read().length > 0;
+
+// «Расскажите о себе» при первом заходе: то, что узнают с первого взгляда, — больше всего оценок на IMDb
+// (популярность TMDB завышает многолетние сериалы), с 1985 года, от 7,3, с обложкой; не больше двух
+// на первый жанр; треть — сериалы, остальное — фильмы.
+export function onboardPicks(all, n = 12) {
+  const top = all.filter((f) => f.p && f.imdb >= 7.3 && f.v >= 200000 && f.y >= 1985).sort((a, b) => b.v - a.v);
+  const out = [], per = new Map();
+  const take = (list, max) => {
+    for (const f of list) {
+      if (out.length >= max) return;
+      const g = f.genres[0];
+      if ((per.get(g) || 0) >= 2) continue;
+      per.set(g, (per.get(g) || 0) + 1);
+      out.push(f);
+    }
+  };
+  take(top.filter((f) => f.k), Math.round(n / 3));
+  take(top.filter((f) => !f.k), n);
+  return out.sort((a, b) => b.v - a.v);
 }
 
 export function forget() {

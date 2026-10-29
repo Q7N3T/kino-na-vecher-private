@@ -133,3 +133,16 @@ test('золотая середина: половина ленты — изве�
   assert.ok(why('mid').every((x) => x.f.pp <= 300 - 0.15 * 299 && x.f.pp >= 300 - 0.6 * 299 - 1), 'середина — не первые 15% и не дальше 60%');
   assert.ok(why('gem').every((x) => x.f.y >= 1970 && x.f.v < 250000), 'находки — с 1970-го и не громкие');
 });
+
+test('«Расскажите о себе»: известное и хорошее, разные жанры, сериалов не меньше трети', async () => {
+  const { onboardPicks } = await import('../src/lib/taste.js');
+  const all = [];
+  for (let i = 0; i < 80; i++)
+    all.push({ id: 'tt' + i, p: '/p.jpg', y: 2000, imdb: 7 + (i % 20) / 10, v: 150000 + i * 10000, pp: i % 5 === 0 ? 5000 : 1, genres: [['драма', 'комедия', 'боевик', 'ужасы', 'триллер', 'фантастика'][i % 6]], k: i % 5 === 0 ? 's' : 0 });
+  const picks = onboardPicks(all, 12);
+  assert.equal(picks.length, 12);
+  assert.ok(picks.every((f) => f.imdb >= 7.3 && f.v >= 200000 && f.p));
+  assert.equal(picks.filter((f) => f.k).length, 4, 'сериалов — треть, хоть у них и популярность TMDB выше');
+  const per = {}; for (const f of picks) per[f.genres[0]] = (per[f.genres[0]] || 0) + 1;
+  assert.ok(Object.values(per).every((x) => x <= 2), 'не больше двух на жанр');
+});

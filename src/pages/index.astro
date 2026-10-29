@@ -46,6 +46,14 @@ const colls = COLLECTIONS.slice(0, 4);
     </div>
   </section>
 
+  <!-- первый заход, истории ещё нет: отметить, что нравится, — подборка ниже сразу подстроится -->
+  <section class="sec wrap onb" id="onb" hidden aria-labelledby="h-onb">
+    <div class="sec-h"><h2 id="h-onb">Расскажите о себе за 10 секунд</h2><button class="more-link onb-skip" id="onb-skip" type="button">Пропустить</button></div>
+    <p class="onb-l">Отметьте, что смотрели и любите, — подборка ниже подстроится под ваш вкус. Хватит двух-трёх.</p>
+    <div class="onb-g" id="onb-g"></div>
+    <div class="onb-a"><button class="btn" id="onb-go" type="button" disabled data-umami-event="Расскажите о себе">Подобрать под меня</button><small id="onb-n" aria-live="polite"></small></div>
+  </section>
+
   <section class="sec wrap" aria-labelledby="h-tonight">
     <div class="sec-h">
       <h2 id="h-tonight">Подходит на сегодня <small id="tonight-n"></small></h2>
@@ -141,13 +149,30 @@ const colls = COLLECTIONS.slice(0, 4);
     .pick-p { width: 64px; }
     .pick-b b { font-size: 16px; }
   }
+  /* «Расскажите о себе»: обложки-переключатели */
+  .onb-l { margin: -8px 0 20px; color: var(--muted); }
+  .onb-skip { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+  .onb-g { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+  .onb-g :global(.onb-i) { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .onb-g :global(.onb-i .poster) { transition: transform 500ms var(--ease), box-shadow 300ms var(--ease); }
+  .onb-g :global(.onb-i:hover .poster) { transform: translateY(-4px); }
+  .onb-g :global(.onb-i:focus-visible .poster) { box-shadow: 0 0 0 3px var(--accent); }
+  .onb-g :global(.onb-i[aria-pressed="true"] .poster) { box-shadow: 0 0 0 3px var(--accent); transform: scale(.97); }
+  .onb-g :global(.onb-ok) { position: absolute; z-index: 2; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--accent); color: #131209; opacity: 0; transform: scale(.6); transition: opacity 300ms var(--ease), transform 300ms var(--ease); }
+  .onb-g :global(.onb-i[aria-pressed="true"] .onb-ok) { opacity: 1; transform: none; }
+  .onb-g :global(.onb-t) { font-size: 14px; line-height: 20px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .onb-a { display: flex; align-items: center; gap: 16px; margin-top: 24px; }
+  .onb-a small { color: var(--dim); font-size: 14px; }
+  @media (max-width: 1100px) { .onb-g { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 760px) { .onb-g { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } }
 </style>
 
 <script>
   import { loadIndex, matches, base, watchlist } from '../lib/client.js';
-  import { profile } from '../lib/taste.js';
+  import { profile, hasHistory, onboardPicks, record } from '../lib/taste.js';
   import { curate, dailyPick, popularNow } from '../lib/curate.js';
-  import { cardHTML, MOODS, TIMES, KINDS, plural, dur, kindName, seasons, tmdbImg, hue, finish, cap } from '../lib/format.js';
+  import { cardHTML, MOODS, TIMES, KINDS, plural, dur, kindName, seasons, tmdbImg, hue, finish, cap, esc } from '../lib/format.js';
 
   const state = { time: 105, mood: 'laugh', kind: 'any' };
   // метка на постере: почему тайтл в подборке
@@ -340,4 +365,39 @@ const colls = COLLECTIONS.slice(0, 4);
 
   label();
   update();
+
+  // «Расскажите о себе»: при первом заходе, пока нет истории; отмеченное — в профиль вкуса (и в подборку
+  // уже не попадёт: это смотрели); показывается один раз
+  async function onboard() {
+    let done = false;
+    try { done = !!localStorage.getItem('knv-onboard'); } catch {}
+    if (done || hasHistory()) return;
+    const picks = onboardPicks(await loadIndex());
+    if (picks.length < 6) return;
+    const chosen = new Set<string>();
+    const go = $('onb-go') as HTMLButtonElement;
+    const check = '<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg>';
+    $('onb-g').innerHTML = picks.map((f: any) => `<button class="onb-i" type="button" aria-pressed="false" data-id="${f.id}">
+      <span class="poster" style="--h:${hue(f.id)}"><img src="${tmdbImg(f.p, 200)}" alt="" loading="lazy" onerror="knvImg(this)"><span class="ph" aria-hidden="true">${esc(f.t)}</span><span class="onb-ok" aria-hidden="true">${check}</span></span>
+      <span class="onb-t">${esc(f.t)}</span></button>`).join('');
+    $('onb-g').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('.onb-i');
+      if (!b) return;
+      const id = b.dataset.id!;
+      if (!chosen.delete(id)) chosen.add(id);
+      b.setAttribute('aria-pressed', String(chosen.has(id)));
+      go.disabled = !chosen.size;
+      $('onb-n').textContent = chosen.size ? `Отмечено: ${chosen.size}` : '';
+    });
+    const close = (save: boolean) => {
+      if (save) chosen.forEach((id) => record(id, 'like'));
+      try { localStorage.setItem('knv-onboard', '1'); } catch {}
+      $('onb').hidden = true;
+      if (save) { update(); $('h-tonight').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); }
+    };
+    go.addEventListener('click', () => close(true));
+    $('onb-skip').addEventListener('click', () => close(false));
+    $('onb').hidden = false;
+  }
+  onboard();
 </script>
