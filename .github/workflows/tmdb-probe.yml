@@ -1,0 +1,21 @@
+# Разбор обложек: что TMDB знает о тайтле, открывается ли обложка из базы, какие обложки у сезонов.
+# Запускается вручную с номерами IMDb; ничего не меняет — только пишет в лог.
+name: Разобрать обложки
+
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: "Номера IMDb через пробел (tt0084988 tt0088484)"
+        required: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          IDS: ${{ inputs.ids }}
+        run: python3 scripts/tmdb_probe.py $IDS
