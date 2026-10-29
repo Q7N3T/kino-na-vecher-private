@@ -268,7 +268,7 @@ if __name__ == "__main__":
                         except Exception as e: print(name, m, "не открылась:", e)
             elif u.startswith("find:"):
                 for name, site in SITES.items():
-                    try: hits = sorted(p for p in title_pages(sitemap(site), site["page"]) if u[5:].lower() in p.lower())
+                    try: hits = sorted({p for p in sitemap(site) if u[5:].lower() in p.lower()})  # сырые адреса карты — и не похожие на страницу тайтла
                     except Exception as e: hits = [f"карта сайта не открылась: {e}"]
                     print(name, u[5:], "→", *hits[:15])
             else: explain(u)
