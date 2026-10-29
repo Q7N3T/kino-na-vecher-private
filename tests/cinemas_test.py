@@ -54,15 +54,16 @@ class Pages(unittest.TestCase):
                          {"https://www.ivi.ru/watch/sled", "https://www.ivi.ru/watch/ezel"})
 
     def test_year_from_each_page(self):
-        self.assertEqual(c.page_year('<title>Фильм 13 жизней 2022 — смотреть онлайн в HD | Flex</title>', c.SITES["flex"]["year"]), 2022)
-        self.assertEqual(c.page_year('<title>Фильм 28 лет спустя 2025 — смотреть онлайн в HD | Flex</title>', c.SITES["flex"]["year"]), 2025)
-        self.assertEqual(c.page_year('<meta property="og:title" content="Первая любовь (Первая любовь, 2022)"/>', c.SITES["ivi"]["year"]), 2022)
-        self.assertEqual(c.page_year('{"name":"Мошенники","year":2026}', c.SITES["start"]["year"]), 2026)
-        self.assertEqual(c.page_year('{"releaseYear":1998,"x":1}', c.SITES["kion"]["year"]), 1998)
-        self.assertEqual(c.page_year('<title>Без года</title>', c.SITES["flex"]["year"]), 0)
-        # год в названии («1883») — не год выхода: берём тот, что перед « — смотреть»
-        self.assertEqual(c.page_year('<title>Сериал 1883 2021 — смотреть онлайн в HD | Flex</title>', c.SITES["flex"]["year"]), 2021)
-        self.assertEqual(c.page_year('<title>Flex — онлайн-кинотеатр</title>', c.SITES["flex"]["year"]), 0)
+        self.assertEqual(c.page_years('<title>Фильм 13 жизней 2022 — смотреть онлайн в HD | Flex</title>', c.SITES["flex"]["year"]), [2022])
+        self.assertEqual(c.page_years('<title>Фильм 28 лет спустя 2025 — смотреть онлайн в HD | Flex</title>', c.SITES["flex"]["year"]), [2025])
+        self.assertEqual(c.page_years('<meta property="og:title" content="Первая любовь (Первая любовь, 2022)"/>', c.SITES["ivi"]["year"]), [2022])
+        self.assertEqual(c.page_years('{"name":"Мошенники","year":2026}', c.SITES["start"]["year"]), [2026])
+        self.assertEqual(c.page_years('{"releaseYear":1998,"x":1}', c.SITES["kion"]["year"]), [1998])
+        self.assertEqual(c.page_years('<title>Без года</title>', c.SITES["flex"]["year"]), [])
+        # сериал — диапазон лет; год в названии («1883») тоже попадёт, но и год выхода рядом
+        self.assertEqual(c.page_years('<title>Сериал Уэнсдэй 2022–2025 — смотреть онлайн в HD | Flex</title>', c.SITES["flex"]["year"]), [2022, 2025])
+        self.assertEqual(c.page_years('<title>Сериал 1883 2021 — смотреть онлайн в HD | Flex</title>', c.SITES["flex"]["year"]), [2021])  # «1883» — часть названия, до годов
+        self.assertEqual(c.page_years('<title>Flex — онлайн-кинотеатр</title>', c.SITES["flex"]["year"]), [])
 
 
 class Assign(unittest.TestCase):
@@ -71,14 +72,14 @@ class Assign(unittest.TestCase):
         films = {"tt1": old, "tt2": new}
         cands = c.candidates(films, {"https://www.ivi.ru/watch/dyuna"}, "t")
         self.assertEqual(len(cands["https://www.ivi.ru/watch/dyuna"]), 2)
-        self.assertEqual(c.assign(cands, {"https://www.ivi.ru/watch/dyuna": 2021}), {"tt2": "https://www.ivi.ru/watch/dyuna"})
+        self.assertEqual(c.assign(cands, {"https://www.ivi.ru/watch/dyuna": [2021]}), {"tt2": "https://www.ivi.ru/watch/dyuna"})
 
     def test_year_off_by_one_is_ok_wrong_or_unknown_year_is_not(self):
         f = {"tt1": film("tt1", "Холоп 3", 2026)}
         cands = c.candidates(f, {"https://start.ru/watch/holop-3"}, "t")
-        self.assertEqual(c.assign(cands, {"https://start.ru/watch/holop-3": 2025}), {"tt1": "https://start.ru/watch/holop-3"})
-        self.assertEqual(c.assign(cands, {"https://start.ru/watch/holop-3": 2019}), {})
-        self.assertEqual(c.assign(cands, {"https://start.ru/watch/holop-3": 0}), {})
+        self.assertEqual(c.assign(cands, {"https://start.ru/watch/holop-3": [2025]}), {"tt1": "https://start.ru/watch/holop-3"})
+        self.assertEqual(c.assign(cands, {"https://start.ru/watch/holop-3": [2019]}), {})
+        self.assertEqual(c.assign(cands, {"https://start.ru/watch/holop-3": []}), {})
 
     def test_short_titles_are_not_matched(self):
         self.assertEqual(c.candidates({"tt1": film("tt1", "Он", 2000)}, {"https://start.ru/watch/on"}, "t"), {})
@@ -101,17 +102,17 @@ class CheckPage(unittest.TestCase):
             return c.check_page(self.url, self.flex)
 
     def test_open_page_gives_its_year(self):
-        self.assertEqual(self.check(FakePage("<title>Сериал Уэнсдэй 2022 — смотреть онлайн в HD | Flex</title>", self.url)), 2022)
+        self.assertEqual(self.check(FakePage("<title>Сериал Уэнсдэй 2022 — смотреть онлайн в HD | Flex</title>", self.url)), [2022])
 
     def test_404_and_redirect_mean_no_page(self):
-        self.assertEqual(self.check(urllib.error.HTTPError(self.url, 404, "Not Found", {}, None)), 0)
-        self.assertEqual(self.check(FakePage("<title>Flex 2026 — главная</title>", "https://kinoflex.ru/")), 0)
+        self.assertEqual(self.check(urllib.error.HTTPError(self.url, 404, "Not Found", {}, None)), [])
+        self.assertEqual(self.check(FakePage("<title>Flex 2026 — главная</title>", "https://kinoflex.ru/")), [])
 
     def test_sitemap_page_may_redirect_to_main_address(self):
         ivi, url = c.SITES["ivi"], "https://www.ivi.ru/watch/pchelovod"
         page = FakePage('<meta property="og:title" content="Пчеловод (The Beekeeper, 2024)"/>', "https://www.ivi.ru/watch/511457")
         with mock.patch.object(c.urllib.request, "urlopen", side_effect=[page]):
-            self.assertEqual(c.check_page(url, ivi), 2024)
+            self.assertEqual(c.check_page(url, ivi), [2024])
 
     def test_site_down_means_try_later(self):
         self.assertIsNone(self.check(urllib.error.HTTPError(self.url, 503, "Unavailable", {}, None)))

@@ -23,8 +23,9 @@ RECHECK = 30  # через сколько дней проверять стран
 SITES = {
     "flex": dict(maps=["https://kinoflex.ru/sitemap-film.xml", "https://kinoflex.ru/sitemap-serial.xml"],
                  page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o", guess="https://kinoflex.ru/movie/{}",
-                 per_run=20000, read=60_000,
-                 year=r"<title>[^<]*\b((?:19|20)\d\d)\s+—[^<]*</title>"),
+                 per_run=20000, read=60_000, ver=2,
+                 # «Сериал Уэнсдэй 2022–2025 — смотреть…»: годы — все в заголовке, кроме названия
+                 year=r"<title>[^<]*?((?:(?:19|20)\d\d\D{0,3})+)—[^<]*</title>"),
     "ivi": dict(maps=["https://www.ivi.ru/sitemap.xml"], kids=r"sitemap-watch-", ver=2,
                 page=r"^(https://www\.ivi\.ru/watch/(?!\d+(?:/|$))[^/?#]+)", by="t",
                 year=r'og:title" content="[^"]*?((?:19|20)\d\d)\)'),
@@ -73,9 +74,10 @@ def title_pages(urls, page_re):
     return out
 
 
-def page_year(html, year_re):
+def page_years(html, year_re):
+    """Годы со страницы: один или диапазон, как у сериалов («2022–2025»); [] — года нет."""
     m = re.search(year_re, html)
-    return int(m.group(1)) if m else 0
+    return sorted({int(y) for y in re.findall(r"(?:19|20)\d\d", m.group(1))}) if m else []
 
 
 def candidates(films, pages, by):
@@ -92,14 +94,13 @@ def candidates(films, pages, by):
 
 
 def assign(cands, years):
-    """Привязать страницу к фильму, чей год совпал с годом на странице (±1: у кинотеатров бывает год
-    премьеры в России). Несколько подходят — берём точный год; год не нашёлся — страницу пропускаем."""
+    """Привязать страницу к фильму, чей год есть на странице (±1: у кинотеатров бывает год премьеры
+    в России). Несколько подходят — берём точный год; года на странице нет — страницу пропускаем."""
     links = {}
     for u in sorted(cands):
-        y = years.get(u)
-        if not y: continue
-        hit = [f for f in cands[u] if abs(f["y"] - y) <= 1]
-        if len(hit) > 1: hit = [f for f in hit if f["y"] == y]
+        ys = years.get(u) or []
+        hit = [f for f in cands[u] if any(abs(f["y"] - y) <= 1 for y in ys)]
+        if len(hit) > 1: hit = [f for f in hit if f["y"] in ys]
         if len(hit) == 1: links.setdefault(hit[0]["id"], u)
     return links
 
@@ -113,21 +114,21 @@ def get(url, limit=None):
 
 
 def check_page(url, site):
-    """Год со страницы; 0 — страницы нет (404, переадресация на другую страницу, нет года — пустая
+    """Годы со страницы; [] — страницы нет (404, переадресация на другую страницу, нет года — пустая
     заглушка); None — сайт не ответил, проверим в следующий раз."""
     try:
         req = urllib.request.Request(url, headers=UA)
         with urllib.request.urlopen(req, timeout=60) as r:
             # угаданный адрес, переадресованный в другое место, — страницы нет; адрес из карты сайта
             # кинотеатр вправе переадресовать на свой основной (Иви так и делает)
-            if site.get("guess") and r.url.rstrip("/") != url.rstrip("/"): return 0
+            if site.get("guess") and r.url.rstrip("/") != url.rstrip("/"): return []
             b = r.read(site.get("read", 400_000))
     except urllib.error.HTTPError as e:
-        return 0 if e.code in (404, 410) else None
+        return [] if e.code in (404, 410) else None
     except Exception:
         return None
     if b[:2] == b"\x1f\x8b": b = gzip.decompress(b)
-    return page_year(b.decode("utf-8", "replace"), site["year"])
+    return page_years(b.decode("utf-8", "replace"), site["year"])
 
 
 def sitemap(site):
@@ -148,7 +149,10 @@ def cinema_links(films):
     try: cache = json.load(open(CACHE, encoding="utf-8"))
     except (OSError, ValueError): cache = {}
     today = datetime.date.today().toordinal()
-    cache = {u: v if isinstance(v, list) else [v, today] for u, v in cache.items()}  # старый формат: только год
+    # старые форматы: только год; год числом, а не списком лет
+    cache = {u: v if isinstance(v, list) else [v, today] for u, v in cache.items()}
+    for v in cache.values():
+        if isinstance(v[0], int): v[0] = [v[0]] if v[0] else []
     for name, site in SITES.items():
         try:
             pages = title_pages(sitemap(site), site["page"])
@@ -159,7 +163,7 @@ def cinema_links(films):
         if site.get("guess"):
             pages |= {site["guess"].format(k) for f in films.values() if len(k := key_of(f, site["by"])) >= 3}
         cands = candidates(films, pages, site["by"])
-        # кеш: адрес → [год или 0, когда проверено, версия]; сначала непроверенные, потом самые давние
+        # кеш: адрес → [годы со страницы, когда проверено, версия]; сначала непроверенные, потом самые давние
         # ver — версия проверки у кинотеатра: поменялась — проверяем его страницы заново
         ver = site.get("ver", 1)
         age = lambda u: today - cache[u][1] if u in cache and (cache[u][2:] or [1])[0] == ver else 10**6
@@ -191,5 +195,8 @@ if __name__ == "__main__":
         got = [(f["t"], f["y"], f["ln"][name]) for f in films.values() if name in f.get("ln", {})]
         print(f"{name}: {len(got)}")
         for row in random.sample(got, min(15, len(got))): print("   ", *row)
+    for u in ("https://kinoflex.ru/movie/wednesday", "https://kinoflex.ru/movie/strangerthings"):
+        try: print(u, re.search(r"<title>[^<]*</title>", get(u, 60_000)).group(0))
+        except Exception as e: print(u, e)
     for t in ("Уэнсдэй", "Сопрано", "Друзья", "Пчеловод", "Крёстный отец"):
         print(t, [(f["y"], f.get("ln")) for f in films.values() if f["t"] == t])
