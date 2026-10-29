@@ -227,7 +227,26 @@ def save(cache):
         json.dump(cache, fh, ensure_ascii=False, separators=(",", ":"))
 
 
+def explain(url):
+    """Почему адрес прошёл или не прошёл проверку: ответ сайта, конечный адрес, заголовок, годы."""
+    name = next((n for n, s in SITES.items() if re.match(s["page"], url)), None)
+    try:
+        req = urllib.request.Request(url, headers=UA)
+        with urllib.request.urlopen(req, timeout=60) as r:
+            code, final, html = r.status, r.url, r.read(400_000).decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        code, final, html = e.code, url, ""
+    except Exception as e:
+        return print(url, "не открылся:", e)
+    title = (re.search(r"<title>[^<]*</title>", html) or [""])[0]
+    print(url, f"→ {code} {final if final != url else ''}", title, "| годы:", page_years(html, SITES[name]["year"]) if name else "—",
+          "| проверка:", check_page(url, SITES[name]) if name else "—")
+
+
 if __name__ == "__main__":
+    if sys.argv[1:]:  # python3 scripts/cinemas.py <адрес>… — разобрать отдельные адреса, базу не трогать
+        for u in sys.argv[1:]: explain(u)
+        sys.exit()
     # пробный запуск на нынешней базе: сколько ссылок нашлось и примеры — базу не меняет
     import random
     from build_films import load_existing

@@ -4,6 +4,10 @@ name: Проверить ссылки на кинотеатры
 
 on:
   workflow_dispatch:
+    inputs:
+      urls:
+        description: "Адреса через пробел — только разобрать их (ответ сайта, заголовок, годы), без проверки всей базы"
+        required: false
 
 jobs:
   check:
@@ -16,7 +20,9 @@ jobs:
           path: data/cinema-cache.json
           key: cinema-cache-${{ github.run_id }}
           restore-keys: cinema-cache-
-      - run: python3 scripts/cinemas.py
+      - env:
+          URLS: ${{ inputs.urls }}
+        run: python3 scripts/cinemas.py $URLS
       # проверенные страницы сохраняются, даже если запуск упал или его прервали по времени
       - uses: actions/cache/save@v4
         if: always()
