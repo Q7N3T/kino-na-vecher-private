@@ -16,8 +16,8 @@ const DIRECT = {
   117: (f) => f.kp && `https://www.kinopoisk.ru/film/${f.kp}/`,
 };
 // кинотеатры, чьи страницы фильмов найдены в карте сайта (f.ln по этим ключам), — как они называются
-const SITEMAP = { flex: 'FLEX', ivi: 'Иви', start: 'Start', kion: 'KION' };
-const sitemapKey = (name) => ({ иви: 'ivi', ivi: 'ivi', kion: 'kion', start: 'start', flex: 'flex' })[name.toLowerCase()];
+const SITEMAP = { flex: 'FLEX', ivi: 'Иви', start: 'Start', kion: 'KION', premier: 'Premier' };
+const sitemapKey = (name) => ({ иви: 'ivi', ivi: 'ivi', kion: 'kion', start: 'start', flex: 'flex', premier: 'premier' })[name.toLowerCase()];
 
 const SEARCH = {
   117: ['Кинопоиск', 'https://www.kinopoisk.ru/index.php?kp_query={q}'],
@@ -62,17 +62,18 @@ export function watchLink(f, providerId, name = '') {
 // shown — номера и названия (в нижнем регистре) кинотеатров, которые уже есть в «Где посмотреть»
 export function searchLinks(f, shown = []) {
   return ELSEWHERE.filter(([k, name]) => !shown.includes(k) && !shown.includes((name || SEARCH[k][0]).toLowerCase()))
-    .map(([k, name, url]) => (typeof k === 'number' ? { name: SEARCH[k][0], url: watchLink(f, k) } : { name, url: fill(url, f) }));
+    .map(([k, name, url]) => (typeof k === 'number' ? { pid: k, name: SEARCH[k][0], url: watchLink(f, k) } : { key: k, name, url: fill(url, f) }));
 }
 
 // Строки блока «Где посмотреть». rows — кинотеатры, где фильм есть точно (JustWatch) или где известна
 // его страница (Кинопоиск по номеру из Wikidata, остальные — из карт сайта); один кинотеатр —
 // одна строка со всеми способами. more — остальные кинотеатры, туда ведёт поиск по названию.
-// logos — логотипы кинотеатров по номеру, собранные по всей базе.
+// logos — логотипы кинотеатров по номеру, собранные по всей базе; icons — свои логотипы тех, кого
+// нет в TMDB (ключ → файл в public/logos): строка получает icon, его показывают вместо буквы.
 const KINDS = [['s', 'по подписке'], ['f', 'бесплатно'], ['a', 'бесплатно с рекламой'], ['r', 'аренда'], ['b', 'покупка']];
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
-export function watchRows(f, logos = {}) {
+export function watchRows(f, logos = {}, icons = {}) {
   const byPid = new Map();
   for (const [k, label] of KINDS)
     for (const [pid, name, logo] of f.wp?.[k] || []) {
@@ -86,6 +87,9 @@ export function watchRows(f, logos = {}) {
   for (const [k, name] of Object.entries(SITEMAP))
     if (f.ln?.[k] && !rows.some((r) => sitemapKey(r.name) === k))
       rows.push({ pid: k, name, logo: null, sub: 'Страница фильма', url: f.ln[k] });
+  for (const r of rows) if (!r.logo && icons[sitemapKey(r.name)]) r.icon = icons[sitemapKey(r.name)];
   const shown = rows.flatMap((r) => [r.pid, r.name.toLowerCase(), sitemapKey(r.name)]);
-  return { rows, more: searchLinks(f, shown) };
+  // у строк «Поискать в» — маленький логотип: из TMDB по номеру или свой по ключу
+  const more = searchLinks(f, shown).map((l) => ({ ...l, logo: logos[l.pid] || null, icon: icons[l.key] || (!logos[l.pid] && icons[sitemapKey(l.name)]) || undefined }));
+  return { rows, more };
 }

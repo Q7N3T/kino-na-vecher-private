@@ -41,6 +41,40 @@ class Keys(unittest.TestCase):
         self.assertEqual(c.key_of(film("tt1", "Up", 2009), "t"), "")
 
 
+class Guess(unittest.TestCase):
+    """Адрес страницы по названию — так, как его пишет сам кинотеатр (настоящие адреса из карт сайта)."""
+    def test_ivi(self):
+        for t, s in [("Я знаю твои секреты", "ya-znayu-tvoi-sekretyi"), ("Воскресший Эртугрул", "voskresshij-ertugrul"),
+                     ("Я тебя нашёл", "ya-tebya-nashyol"), ("Крылышко или ножка", "kryilyishko-ili-nozhka"),
+                     ("Дом ада 2. Отель «Абаддон»", "dom-ada-2-otel-abaddon"), ("Большой босс", "bolshoj-boss"),
+                     ("Полицейская история 3: Суперполицейский", "politsejskaya-istoriya-3-superpolitsejskij")]:
+            self.assertEqual(c.slug(t, c.IVI), s)
+
+    def test_kion(self):
+        for t, s in [("Кровный отец", "krovnyj-otets"), ("Очень плохие парни", "ochen-plohie-parni"), ("8 женщин", "8-zhenschin"),
+                     ("Ещё вчера", "esche-vchera"), ("Человек-паук: Через вселенные", "chelovek-pauk-cherez-vselennye"),
+                     ("После нашей эры", "posle-nashej-ery"), ("Пятьдесят оттенков свободы", "pyatdesyat-ottenkov-svobody")]:
+            self.assertEqual(c.slug(t, c.KION), s)
+
+    def test_start(self):
+        for t, s in [("Твоё сердце будет разбито", "tvoe-serdce-budet-razbito"), ("Сирано де Бержерак", "sirano-de-berzherak"),
+                     ("Папины дочки. Новые", "papiny-dochki-novye")]:
+            self.assertEqual(c.slug(t, c.START), s)
+
+    def test_premier(self):
+        for t, s in [("Двойная жизнь", "dvojnaya-zhizn"), ("Холоп", "holop"), ("Горький 53", "gorkij-53"), ("Физрук", "fizruk")]:
+            self.assertEqual(c.slug(t, c.PREMIER), s)
+        y = c.SITES["premier"]["year"]
+        self.assertEqual(c.page_years("<title>Холоп (2019, фильм) смотреть в хорошем качестве онлайн на сайте PREMIER.ONE</title>", y), [2019])
+        self.assertEqual(c.page_years('<title>«Физрук» сериал смотреть</title>…{"year":2014,"x":1}', y), [2014])
+        self.assertEqual(c.page_years("<title>Нет такой страницы</title>", y), [])
+
+    def test_kion_series_and_films_live_apart(self):
+        self.assertEqual(c.SITES["kion"]["guess"]({"t": "Рим", "k": "s"}), ["https://kion.ru/serial/rim"])
+        self.assertEqual(c.SITES["kion"]["guess"]({"t": "Сияние"}), ["https://kion.ru/film/siyanie"])
+        self.assertEqual(c.SITES["ivi"]["guess"]({"t": "Up"}), [], "без русского названия адреса не угадать")
+
+
 class Pages(unittest.TestCase):
     def test_subpages_lead_to_title_page(self):
         urls = ["https://start.ru/watch/holop-3/trailers/140199", "https://start.ru/watch/holop-3",

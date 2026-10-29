@@ -18,21 +18,50 @@ RECHECK = 30  # через сколько дней проверять стран
 
 # key: карта сайта (индекс или список), какие дочерние карты брать, какие адреса — страницы тайтлов,
 # как найти год на странице. by: "o" — адрес из оригинального названия, "t" — из русского.
-# guess — адрес, который пробуем для каждого тайтла базы, даже если его нет в карте сайта (у FLEX
-# в карте сайта не всё: kinoflex.ru/movie/wednesday открывается, а в карте его нет).
+# guess — адреса, которые пробуем для каждого тайтла базы, даже если их нет в карте сайта (у FLEX
+# в карте сайта не всё: kinoflex.ru/movie/wednesday открывается, а в карте его нет); страница
+# должна открыться (не 404) и показать тот же год. strict — переадресация значит «страницы нет»
+# (у FLEX так; Иви же переадресует настоящие страницы на основной адрес).
+# Свой способ писать по-русски латиницей у каждого кинотеатра — по адресам из их карт сайта:
+# Иви: ivi.ru/watch/ya-znayu-tvoi-sekretyi, voskresshij-ertugrul, ya-tebya-nashyol;
+# KION: kion.ru/film/krovnyj-otets, 8-zhenschin, esche-vchera; Start: start.ru/watch/tvoe-serdce-budet-razbito.
+IVI = {"й": "j", "ы": "yi", "ё": "yo", "ц": "ts", "щ": "sch"}
+KION = {"й": "j", "ы": "y", "ё": "e", "ц": "ts", "щ": "sch"}
+START = {"й": "y", "ы": "y", "ё": "e", "ц": "c", "щ": "sch"}
+PREMIER = KION  # premier.one/show/dvojnaya-zhizn-mi, 16-let-i-9-mesyatsev, holop
+
+
+def slug(title, scheme):
+    """Название → адрес по способу кинотеатра: «Дом ада 2. Отель «Абаддон»» → dom-ada-2-otel-abaddon."""
+    s = "".join(scheme.get(c, RU.get(c, c)) if c not in "ьъ" else "" for c in title.lower())
+    return re.sub(r"[^a-z0-9]+", "-", s.replace("-", " ")).strip("-")
+
+
+ru = lambda f: bool(re.search(r"[а-яё]", f["t"], re.I))
 SITES = {
     "flex": dict(maps=["https://kinoflex.ru/sitemap-film.xml", "https://kinoflex.ru/sitemap-serial.xml"],
-                 page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o", guess="https://kinoflex.ru/movie/{}",
+                 page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o", strict=True,
+                 guess=lambda f: [f"https://kinoflex.ru/movie/{key_of(f, 'o')}"],
                  per_run=20000, read=60_000, ver=2,
                  # «Сериал Уэнсдэй 2022–2025 — смотреть…»: годы — все в заголовке, кроме названия
                  year=r"<title>[^<]*?((?:(?:19|20)\d\d\D{0,3})+)—[^<]*</title>"),
     "ivi": dict(maps=["https://www.ivi.ru/sitemap.xml"], kids=r"sitemap-watch-", ver=2,
-                page=r"^(https://www\.ivi\.ru/watch/(?!\d+(?:/|$))[^/?#]+)", by="t",
+                page=r"^(https://www\.ivi\.ru/watch/(?!\d+(?:/|$))[^/?#]+)", by="t", per_run=6000,
+                guess=lambda f: [f"https://www.ivi.ru/watch/{slug(f['t'], IVI)}"] if ru(f) else [],
                 year=r'og:title" content="[^"]*?((?:19|20)\d\d)\)'),
     "start": dict(maps=["https://start.ru/sitemap.xml"], kids=r"/(movies|series|animation)\.xml",
-                  page=r"^(https://start\.ru/watch/[^/?#]+)", by="t", year=r'"year":((?:19|20)\d\d)'),
+                  page=r"^(https://start\.ru/watch/[^/?#]+)", by="t", per_run=6000,
+                  guess=lambda f: [f"https://start.ru/watch/{slug(f['t'], START)}"] if ru(f) else [],
+                  year=r'"year":((?:19|20)\d\d)'),
     "kion": dict(maps=["https://kion.ru/sitemapIndex.xml"], kids=r"sitemap\d+\.xml",
-                 page=r"^(https://kion\.ru/(?:film|serial)/[^/?#]+)", by="t", year=r'"releaseYear":((?:19|20)\d\d)'),
+                 page=r"^(https://kion\.ru/(?:film|serial)/[^/?#]+)", by="t", per_run=6000,
+                 guess=lambda f: [f"https://kion.ru/{'serial' if f.get('k') else 'film'}/{slug(f['t'], KION)}"] if ru(f) else [],
+                 year=r'"releaseYear":((?:19|20)\d\d)'),
+    # в карте сайта Premier — только подборки; страницы тайтлов (и фильмов) — premier.one/show/<название>,
+    # несуществующая — 404; год — в заголовке «Холоп (2019, фильм)», у сериалов — в данных страницы
+    "premier": dict(maps=[], page=r"^(https://premier\.one/show/[^/?#]+)", by="t", per_run=6000,
+                    guess=lambda f: [f"https://premier.one/show/{slug(f['t'], PREMIER)}"] if ru(f) else [],
+                    year=r'<title>[^<]*?\(((?:19|20)\d\d)|"(?:year|releaseYear|productionYear)"\s*:\s*"?((?:19|20)\d\d)'),
 }
 
 RU = dict(zip("абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
@@ -76,8 +105,8 @@ def title_pages(urls, page_re):
 
 def page_years(html, year_re):
     """Годы со страницы: один или диапазон, как у сериалов («2022–2025»); [] — года нет."""
-    m = re.search(year_re, html)
-    return sorted({int(y) for y in re.findall(r"(?:19|20)\d\d", m.group(1))}) if m else []
+    m = re.search(year_re, html)  # у regex может быть несколько вариантов — берём сработавший
+    return sorted({int(y) for y in re.findall(r"(?:19|20)\d\d", next(g for g in m.groups() if g))}) if m else []
 
 
 def candidates(films, pages, by):
@@ -121,7 +150,7 @@ def check_page(url, site):
         with urllib.request.urlopen(req, timeout=60) as r:
             # угаданный адрес, переадресованный в другое место, — страницы нет; адрес из карты сайта
             # кинотеатр вправе переадресовать на свой основной (Иви так и делает)
-            if site.get("guess") and r.url.rstrip("/") != url.rstrip("/"): return []
+            if site.get("strict") and r.url.rstrip("/") != url.rstrip("/"): return []
             b = r.read(site.get("read", 400_000))
     except urllib.error.HTTPError as e:
         return [] if e.code in (404, 410) else None
@@ -161,13 +190,15 @@ def cinema_links(films):
             continue
         listed = len(pages)
         if site.get("guess"):
-            pages |= {site["guess"].format(k) for f in films.values() if len(k := key_of(f, site["by"])) >= 3}
+            pages |= {u for f in films.values() for u in site["guess"](f) if len(url_key(u, site["by"])) >= 3}
         cands = candidates(films, pages, site["by"])
         # кеш: адрес → [годы со страницы, когда проверено, версия]; сначала непроверенные, потом самые давние
         # ver — версия проверки у кинотеатра: поменялась — проверяем его страницы заново
         ver = site.get("ver", 1)
         age = lambda u: today - cache[u][1] if u in cache and (cache[u][2:] or [1])[0] == ver else 10**6
-        todo = sorted((u for u in cands if age(u) >= RECHECK), key=age, reverse=True)[:site.get("per_run", PER_RUN)]
+        # среди одинаково давних — сначала популярное: за первые запуски проверяется то, что смотрят
+        pop = lambda u: max(f.get("pop", 0) for f in cands[u])
+        todo = sorted((u for u in cands if age(u) >= RECHECK), key=lambda u: (age(u), pop(u)), reverse=True)[:site.get("per_run", PER_RUN)]
         with cf.ThreadPoolExecutor(8) as ex:
             for u, y in zip(todo, ex.map(lambda u: check_page(u, site), todo)):
                 if y is not None: cache[u] = [y, today, ver]
@@ -195,8 +226,8 @@ if __name__ == "__main__":
         got = [(f["t"], f["y"], f["ln"][name]) for f in films.values() if name in f.get("ln", {})]
         print(f"{name}: {len(got)}")
         for row in random.sample(got, min(15, len(got))): print("   ", *row)
-    for u in ("https://kinoflex.ru/movie/wednesday", "https://kinoflex.ru/movie/strangerthings"):
-        try: print(u, re.search(r"<title>[^<]*</title>", get(u, 60_000)).group(0))
-        except Exception as e: print(u, e)
-    for t in ("Уэнсдэй", "Сопрано", "Друзья", "Пчеловод", "Крёстный отец"):
+    for name, u in (("premier", "https://premier.one/show/fizruk"), ("premier", "https://premier.one/show/holop"),
+                    ("kion", "https://kion.ru/serial/rim"), ("ivi", "https://www.ivi.ru/watch/pchelovod")):
+        print(u, check_page(u, SITES[name]))
+    for t in ("Уэнздей", "Сопрано", "Друзья", "Пчеловод", "Крёстный отец", "Физрук", "Слово пацана. Кровь на асфальте"):
         print(t, [(f["y"], f.get("ln")) for f in films.values() if f["t"] == t])

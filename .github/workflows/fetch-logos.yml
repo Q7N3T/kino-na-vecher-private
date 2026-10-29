@@ -49,13 +49,6 @@ jobs:
                   open(f"public/logos/{key}.{ext}", "wb").write(body)
                   print(f"   → public/logos/{key}.{ext} ({len(body):,} байт) из {u}")
                   break
-      - name: Разведка Premier — как устроены адреса страниц тайтлов
-        run: |
-          UA="Mozilla/5.0 (compatible; kino-na-vecher/1.0)"
-          for u in https://premier.one/show/slovo-pacana https://premier.one/show/slovo-patsana https://premier.one/show/kuhnya https://premier.one/show/fizruk https://premier.one/movie/kholop https://premier.one/show/holop; do
-            echo "$u -> $(curl -s -m 20 -A "$UA" -o /tmp/p.html -w '%{http_code} %{url_effective}' -L "$u") $(grep -o '<title>[^<]*</title>' /tmp/p.html | head -1)"
-          done
-          curl -s -m 20 -A "$UA" https://premier.one/series | grep -o 'href="/show/[^"]*"' | sort -u | head -15
       - name: Закоммитить логотипы
         run: |
           git add public/logos

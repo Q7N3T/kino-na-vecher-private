@@ -85,3 +85,16 @@ test('строки «Где посмотреть» без данных: толь
   assert.equal(rows.length, 0);
   assert.ok(more.some((l) => l.name === 'Кинопоиск' && l.url.includes('kp_query=')));
 });
+
+test('свой логотип кинотеатра без логотипа в TMDB — по ключу: FLEX, Иви', async () => {
+  const { watchRows } = await import('../src/lib/partners.js');
+  const film = { ...f, ln: { flex: 'https://kinoflex.ru/movie/friends', kion: 'https://kion.ru/serial/druzya' }, wp: { l: 'x', s: [[115, 'Okko', '/okko.png']] } };
+  const { rows } = watchRows(film, {}, { flex: 'flex.png' });
+  assert.equal(rows.find((r) => r.name === 'FLEX').icon, 'flex.png');
+  assert.equal(rows.find((r) => r.name === 'KION').icon, undefined, 'нет файла — буква, как раньше');
+  assert.equal(rows.find((r) => r.name === 'Okko').icon, undefined, 'логотип TMDB остаётся');
+  const { more } = watchRows({ ...f, wp: null }, { 117: '/kp.png' }, { ivi: 'ivi.png', wink: 'wink.svg' });
+  assert.equal(more.find((l) => l.name === 'Иви').icon, 'ivi.png', 'в «Поискать в» — тоже с логотипами');
+  assert.equal(more.find((l) => l.name === 'Кинопоиск').logo, '/kp.png');
+  assert.ok(!more.find((l) => l.name === 'Start').icon, 'нет файла — без значка');
+});

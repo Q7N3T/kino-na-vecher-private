@@ -101,7 +101,12 @@ export function load() {
   // логотипы кинотеатров по номеру — со всей базы: так у Кинопоиска или Okko есть логотип и там, где JustWatch о фильме не знает
   const logos = {};
   for (const f of films) for (const k of ['s', 'f', 'a', 'r', 'b']) for (const [pid, , logo] of f.wp?.[k] || []) if (logo && !logos[pid]) logos[pid] = logo;
-  cache = { films, byId: new Map(films.map((f) => [f.id, f])), actors, actorBySlug, logos };
+  // свои логотипы кинотеатров, которых нет в TMDB (FLEX, Иви…): public/logos/<ключ>.<png|svg|ico>,
+  // их кладёт сценарий «Логотипы кинотеатров» (.github/workflows/fetch-logos.yml)
+  const icons = {};
+  const logoDir = path.join(process.cwd(), 'public', 'logos');
+  if (fs.existsSync(logoDir)) for (const name of fs.readdirSync(logoDir)) icons[name.replace(/\.[^.]+$/, '')] = name;
+  cache = { films, byId: new Map(films.map((f) => [f.id, f])), actors, actorBySlug, logos, icons };
   return cache;
 }
 
