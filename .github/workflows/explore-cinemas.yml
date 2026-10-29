@@ -1,4 +1,5 @@
-# Разведка: открываются ли сайты кинотеатров из GitHub и есть ли у них карта сайта со страницами фильмов.
+# Разведка: открываются ли сайты кинотеатров из GitHub, как устроены карты сайта со страницами
+# фильмов и что есть на самой странице (название, год, номер IMDb) — чтобы сопоставить их с базой.
 # Запускается вручную; ничего не меняет в репозитории — только пишет находки в лог.
 name: Разведка кинотеатров
 
@@ -8,27 +9,60 @@ on:
 jobs:
   explore:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Карты сайтов
+      - name: Карты сайтов и страницы фильмов
+        shell: python3 {0}
         run: |
-          UA="Mozilla/5.0 (compatible; kino-na-vecher/1.0; +https://github.com/Q7N3T/kino-na-vecher-private)"
-          for host in okko.tv www.ivi.ru wink.ru kion.ru start.ru premier.one www.amediateka.ru more.tv kinoflex.ru www.kinopoisk.ru; do
-            echo "::group::$host"
-            code=$(curl -s -m 20 -A "$UA" -o /tmp/robots.txt -w '%{http_code}' "https://$host/robots.txt") || code=ERR
-            echo "robots.txt: $code"
-            grep -i '^sitemap' /tmp/robots.txt | head -5 || true
-            for sm in $(grep -i '^sitemap' /tmp/robots.txt | head -3 | awk '{print $2}' | tr -d '\r'); do
-              c=$(curl -s -m 30 -A "$UA" --compressed -o /tmp/sm "$sm" -w '%{http_code} %{size_download}') || c=ERR
-              case "$sm" in *.gz) gunzip -c /tmp/sm > /tmp/sm.txt 2>/dev/null || cp /tmp/sm /tmp/sm.txt ;; *) cp /tmp/sm /tmp/sm.txt ;; esac
-              echo "$sm -> $c, ссылок: $(grep -o '<loc>' /tmp/sm.txt | wc -l)"
-              grep -o '<loc>[^<]*</loc>' /tmp/sm.txt | head -8 | sed 's/<[^>]*>//g'
-            done
-            echo "::endgroup::"
-          done
-      - name: Примеры страниц
-        run: |
-          UA="Mozilla/5.0 (compatible; kino-na-vecher/1.0)"
-          for u in https://kinoflex.ru/movie/thesopranos https://kinoflex.ru/movie/thedarkknight https://kinoflex.ru/movie/friends https://www.kinopoisk.ru/film/79848/; do
-            echo "$u -> $(curl -s -m 20 -A "$UA" -o /dev/null -w '%{http_code} %{redirect_url}' "$u")"
-          done
+          import gzip, re, urllib.request
+          UA = "Mozilla/5.0 (compatible; kino-na-vecher/1.0; +https://github.com/Q7N3T/kino-na-vecher-private)"
+          def get(u):
+              try:
+                  r = urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": UA}), timeout=40)
+                  b = r.read()
+                  if b[:2] == b"\x1f\x8b": b = gzip.decompress(b)
+                  return r.status, r.url, b.decode("utf-8", "replace")
+              except Exception as e:
+                  return getattr(e, "code", "ERR"), u, str(e)
+          locs = lambda t: re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", t)
+          SITEMAPS = {
+              "ivi": ["https://www.ivi.ru/sitemap.xml"],
+              "start": ["https://start.ru/sitemap/movies.xml", "https://start.ru/sitemap/series.xml"],
+              "premier": ["https://premier.one/sitemap_index.xml"],
+              "amediateka": ["https://www.amediateka.ru/sitemap-content.xml"],
+              "kion": ["https://kion.ru/sitemap0.xml", "https://kion.ru/sitemap1.xml"],
+              "flex": ["https://kinoflex.ru/sitemap-film.xml", "https://kinoflex.ru/sitemap-serial.xml"],
+              "wink": ["https://wink.ru/robots.txt", "https://wink.ru/sitemap.xml"],
+              "more": ["https://more.tv/robots.txt", "https://more.tv/sitemap.xml"],
+              "okko": ["https://okko.tv/sitemap.xml"],
+          }
+          for site, urls in SITEMAPS.items():
+              print(f"::group::{site}")
+              pages = []
+              for u in urls:
+                  code, final, t = get(u)
+                  ls = locs(t)
+                  print(f"{u} -> {code} {final if final != u else ''} ссылок: {len(ls)} байт: {len(t)}")
+                  if u.endswith("robots.txt"):
+                      print("\n".join(l for l in t.splitlines() if l.lower().startswith("sitemap"))[:800])
+                      continue
+                  # индекс карт — показываем дочерние и открываем пару, похожих на фильмы/сериалы
+                  if "<sitemapindex" in t:
+                      print("  дочерние:", *ls[:40], sep="\n    ")
+                      kids = [l for l in ls if re.search(r"film|movie|serial|series|tv|content|catalog", l)][:3]
+                      for k in kids:
+                          c2, _, t2 = get(k); l2 = locs(t2)
+                          print(f"  {k} -> {c2} ссылок: {len(l2)}"); print(*l2[:6], sep="\n    ")
+                          pages += l2[:2]
+                  else:
+                      print(*ls[:10], sep="\n    ")
+                      pages += ls[:2]
+              # что на странице: заголовок, og, год, imdb, ld+json
+              for p in pages[:2]:
+                  code, final, t = get(p)
+                  print(f"  СТРАНИЦА {p} -> {code} байт {len(t)}")
+                  for pat in [r"<title>[^<]*</title>", r'property="og:title"[^>]*', r'"datePublished"\s*:\s*"[^"]*"',
+                              r"imdb[^\"'<>\s]{0,40}", r'"@type"\s*:\s*"[A-Za-z]+"', r'"(?:year|releaseYear|alternateName|originalName|original_title)"\s*:\s*"?[^",}]*']:
+                      m = re.findall(pat, t, re.I)[:3]
+                      if m: print("    ", pat[:20], "→", m)
+              print("::endgroup::")
