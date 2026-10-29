@@ -42,6 +42,11 @@ export function esc(s) {
   return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 }
 
+// поиск: без регистра и «ё»; запрос латиницей находит русское название и наоборот
+export const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е');
+const TR = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
+export const translit = (s) => [...s].map((c) => (c in TR ? TR[c] : c)).join('');
+
 export const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 export function hue(s) {

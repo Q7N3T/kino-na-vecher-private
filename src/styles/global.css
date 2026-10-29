@@ -61,6 +61,27 @@ p, li, dd { text-wrap: pretty; }
 .search input[type="search"] { -webkit-appearance: none; appearance: none; padding: 0; }
 .search input::-webkit-search-decoration { -webkit-appearance: none; }
 .search input::placeholder { color: var(--dim); }
+
+/* подсказки поиска: актёры, фильмы, сериалы — отдельными группами */
+.search { position: relative; }
+.sugg { position: absolute; top: calc(100% + 12px); right: -8px; width: 440px; max-height: min(70vh, 640px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; border-radius: 24px; background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 32px 64px -24px rgba(0, 0, 0, .9); animation: sugg-in 300ms var(--ease) both; }
+@keyframes sugg-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.sg-g + .sg-g { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+.sg-h { margin: 8px 12px 4px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.sg-i { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 16px; text-decoration: none; color: var(--text); transition: background 200ms var(--ease); }
+.sg-i:hover, .sg-i.on { background: var(--surface-2); color: var(--text); }
+.sg-av, .sg-p { position: relative; flex-shrink: 0; overflow: hidden; display: grid; place-items: center; background: var(--surface-2); }
+.sg-av { width: 40px; height: 40px; border-radius: 50%; background: hsl(var(--h) 26% 22%); }
+.sg-av b { font-size: 13px; font-weight: 600; color: hsl(var(--h) 40% 86%); }
+.sg-p { width: 32px; height: 48px; border-radius: 6px; }
+.sg-av img, .sg-p img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sg-t { display: flex; flex-direction: column; min-width: 0; }
+.sg-t b { font-size: 15px; line-height: 20px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-t mark { background: none; color: var(--accent); }
+.sg-t small { font-size: 12px; line-height: 16px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-empty { margin: 12px; color: var(--dim); font-size: 14px; }
+.sg-all { display: block; margin-top: 4px; padding: 12px; border-top: 1px solid var(--line); border-radius: 0 0 16px 16px; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+.sg-all:hover, .sg-all.on { background: var(--surface-2); color: var(--accent); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; min-height: 40px; font-size: 16px; line-height: 24px; border-radius: 12px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; transition: filter 300ms var(--ease), transform 500ms var(--ease); }
 .btn:hover { color: var(--accent-ink); filter: brightness(1.08); }
 .btn:active { transform: scale(.98); }

@@ -130,6 +130,8 @@ const UMAMI_SRC = import.meta.env.PUBLIC_UMAMI_SRC || 'https://cloud.umami.is/sc
 <script>
   // время окончания считается в браузере зрителя: «финал в 22:44, если начать сейчас»
   import { pad } from '../lib/format.js';
+  import { attachSuggest } from '../lib/suggest-ui.js';
+  attachSuggest(document.getElementById('q-top') as HTMLInputElement); // подсказки в поиске в шапке
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fill = () => {
     const now = Date.now();

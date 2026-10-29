@@ -13,9 +13,7 @@ export function loadIndex() {
   return indexPromise;
 }
 
-export const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е');
-const TR = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya' };
-export const translit = (s) => [...s].map((c) => (c in TR ? TR[c] : c)).join('');
+export { norm, translit } from './format.js';
 
 export function matches(f, { time = 999, mood = 'any', kind = 'any', genre = '', from = 0, to = 9999 }) {
   return f.min <= time
