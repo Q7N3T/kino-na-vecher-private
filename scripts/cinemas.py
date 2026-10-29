@@ -296,7 +296,8 @@ def explain(url):
         return print(url, "не открылся:", e)
     title = (re.search(r"<title>[^<]*</title>", html) or [""])[0]
     print(url, f"→ {code} {final if final != url else ''}", title, "| годы:", page_years(html, SITES[name]["year"]) if name else "—",
-          "| проверка:", check_page(url, SITES[name]) if name else "—")
+          "| проверка:", check_page(url, SITES[name]) if name else "—",
+          "| сезоны на странице:", page_seasons(html, url, SITES[name]) if name else "—")
 
 
 if __name__ == "__main__":
