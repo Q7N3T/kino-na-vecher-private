@@ -2,7 +2,10 @@
 Адреса и куски страниц — настоящие, из карт сайта кинотеатров (октябрь 2026)."""
 import os
 import sys
+import io
 import unittest
+import urllib.error
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import cinemas as c  # noqa: E402
@@ -57,6 +60,9 @@ class Pages(unittest.TestCase):
         self.assertEqual(c.page_year('{"name":"Мошенники","year":2026}', c.SITES["start"]["year"]), 2026)
         self.assertEqual(c.page_year('{"releaseYear":1998,"x":1}', c.SITES["kion"]["year"]), 1998)
         self.assertEqual(c.page_year('<title>Без года</title>', c.SITES["flex"]["year"]), 0)
+        # год в названии («1883») — не год выхода: берём тот, что перед « — смотреть»
+        self.assertEqual(c.page_year('<title>Сериал 1883 2021 — смотреть онлайн в HD | Flex</title>', c.SITES["flex"]["year"]), 2021)
+        self.assertEqual(c.page_year('<title>Flex — онлайн-кинотеатр</title>', c.SITES["flex"]["year"]), 0)
 
 
 class Assign(unittest.TestCase):
@@ -76,6 +82,34 @@ class Assign(unittest.TestCase):
 
     def test_short_titles_are_not_matched(self):
         self.assertEqual(c.candidates({"tt1": film("tt1", "Он", 2000)}, {"https://start.ru/watch/on"}, "t"), {})
+
+
+class FakePage(io.BytesIO):
+    def __init__(self, body, url):
+        super().__init__(body.encode())
+        self.url = url
+    def __enter__(self): return self
+    def __exit__(self, *a): pass
+
+
+class CheckPage(unittest.TestCase):
+    flex = c.SITES["flex"]
+    url = "https://kinoflex.ru/movie/wednesday"
+
+    def check(self, answer):
+        with mock.patch.object(c.urllib.request, "urlopen", side_effect=[answer]):
+            return c.check_page(self.url, self.flex)
+
+    def test_open_page_gives_its_year(self):
+        self.assertEqual(self.check(FakePage("<title>Сериал Уэнсдэй 2022 — смотреть онлайн в HD | Flex</title>", self.url)), 2022)
+
+    def test_404_and_redirect_mean_no_page(self):
+        self.assertEqual(self.check(urllib.error.HTTPError(self.url, 404, "Not Found", {}, None)), 0)
+        self.assertEqual(self.check(FakePage("<title>Flex 2026 — главная</title>", "https://kinoflex.ru/")), 0)
+
+    def test_site_down_means_try_later(self):
+        self.assertIsNone(self.check(urllib.error.HTTPError(self.url, 503, "Unavailable", {}, None)))
+        self.assertIsNone(self.check(TimeoutError()))
 
 
 if __name__ == "__main__":

@@ -8,19 +8,23 @@
 Работает только оттуда, где сайты кинотеатров открываются (GitHub Actions). Okko, Wink и More.tv
 из-за границы закрыты, у Premier в карте сайта только подборки, Амедиатека не пускает роботов.
 """
-import concurrent.futures as cf, gzip, json, os, re, sys, urllib.request
+import concurrent.futures as cf, datetime, gzip, json, os, re, sys, urllib.error, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, "data", "cinema-cache.json")
 UA = {"User-Agent": "Mozilla/5.0 (compatible; kino-na-vecher/1.0; +https://github.com/Q7N3T/kino-na-vecher-private)"}
-PER_RUN = 1500  # сколько новых страниц проверять за запуск на кинотеатр — остальное в следующие недели
+PER_RUN = 1500  # сколько страниц проверять за запуск на кинотеатр — остальное в следующие недели
+RECHECK = 30  # через сколько дней проверять страницу снова: фильмы приходят и уходят, страница может стать 404
 
 # key: карта сайта (индекс или список), какие дочерние карты брать, какие адреса — страницы тайтлов,
 # как найти год на странице. by: "o" — адрес из оригинального названия, "t" — из русского.
+# guess — адрес, который пробуем для каждого тайтла базы, даже если его нет в карте сайта (у FLEX
+# в карте сайта не всё: kinoflex.ru/movie/wednesday открывается, а в карте его нет).
 SITES = {
     "flex": dict(maps=["https://kinoflex.ru/sitemap-film.xml", "https://kinoflex.ru/sitemap-serial.xml"],
-                 page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o",
-                 year=r"<title>[^<]*?\b((?:19|20)\d\d)\b[^<]*</title>"),
+                 page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o", guess="https://kinoflex.ru/movie/{}",
+                 per_run=20000, read=60_000,
+                 year=r"<title>[^<]*\b((?:19|20)\d\d)\s+—[^<]*</title>"),
     "ivi": dict(maps=["https://www.ivi.ru/sitemap.xml"], kids=r"sitemap-watch-",
                 page=r"^(https://www\.ivi\.ru/watch/(?!\d+(?:/|$))[^/?#]+)", by="t",
                 year=r'og:title" content="[^"]*?((?:19|20)\d\d)\)'),
@@ -108,6 +112,22 @@ def get(url, limit=None):
     return b.decode("utf-8", "replace")
 
 
+def check_page(url, site):
+    """Год со страницы; 0 — страницы нет (404, переадресация на другую страницу, нет года — пустая
+    заглушка); None — сайт не ответил, проверим в следующий раз."""
+    try:
+        req = urllib.request.Request(url, headers=UA)
+        with urllib.request.urlopen(req, timeout=60) as r:
+            if r.url.rstrip("/") != url.rstrip("/"): return 0
+            b = r.read(site.get("read", 400_000))
+    except urllib.error.HTTPError as e:
+        return 0 if e.code in (404, 410) else None
+    except Exception:
+        return None
+    if b[:2] == b"\x1f\x8b": b = gzip.decompress(b)
+    return page_year(b.decode("utf-8", "replace"), site["year"])
+
+
 def sitemap(site):
     locs = lambda t: re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", t)
     out = []
@@ -125,27 +145,30 @@ def cinema_links(films):
     """Пишет f["ln"] = {кинотеатр: адрес страницы}. Кинотеатр не ответил — в этот раз без его ссылок."""
     try: cache = json.load(open(CACHE, encoding="utf-8"))
     except (OSError, ValueError): cache = {}
+    today = datetime.date.today().toordinal()
+    cache = {u: v if isinstance(v, list) else [v, today] for u, v in cache.items()}  # старый формат: только год
     for name, site in SITES.items():
         try:
             pages = title_pages(sitemap(site), site["page"])
         except Exception as e:
             print(f"  {name}: карта сайта не открылась ({e}) — в этот раз без его ссылок", file=sys.stderr)
             continue
+        listed = len(pages)
+        if site.get("guess"):
+            pages |= {site["guess"].format(k) for f in films.values() if len(k := key_of(f, site["by"])) >= 3}
         cands = candidates(films, pages, site["by"])
-        todo = [u for u in cands if u not in cache][:PER_RUN]
-
-        def check(u):
-            try: return u, page_year(get(u, 400_000), site["year"])
-            except Exception: return u, None  # не открылась — попробуем в следующий раз
-        with cf.ThreadPoolExecutor(6) as ex:
-            for u, y in ex.map(check, todo):
-                if y is not None: cache[u] = y
-        links = assign(cands, {u: cache.get(u) for u in cands})
+        # кеш: адрес → [год или 0, когда проверено]; сначала непроверенные, потом самые давние
+        age = lambda u: today - cache[u][1] if u in cache else 10**6
+        todo = sorted((u for u in cands if age(u) >= RECHECK), key=age, reverse=True)[:site.get("per_run", PER_RUN)]
+        with cf.ThreadPoolExecutor(8) as ex:
+            for u, y in zip(todo, ex.map(lambda u: check_page(u, site), todo)):
+                if y is not None: cache[u] = [y, today]
+        links = assign(cands, {u: cache[u][0] for u in cands if u in cache})
         for f in films.values():
             ln = f.setdefault("ln", {})
             ln.pop(name, None)
             if f["id"] in links: ln[name] = links[f["id"]]
-        print(f"  {name}: страниц тайтлов {len(pages):,}, совпало по названию {len(cands):,}, "
+        print(f"  {name}: в карте сайта {listed:,}, адресов к проверке {len(cands):,}, "
               f"проверено сейчас {len(todo):,}, ссылок {len(links):,}", file=sys.stderr)
     for f in films.values():
         if not f.get("ln"): f.pop("ln", None)
