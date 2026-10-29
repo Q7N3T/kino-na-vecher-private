@@ -43,8 +43,8 @@ def slug(title, scheme):
 
 ru = lambda f: bool(re.search(r"[а-яё]", f["t"], re.I))
 SITES = {
-    # вся карта сайта FLEX, а не только фильмы и сериалы: мультсериалы, аниме и т. п. — в своих разделах
-    "flex": dict(maps=["https://kinoflex.ru/sitemap.xml"],
+    # у FLEX, кроме фильмов и сериалов, — раздел сезонов: часть сериалов есть только там
+    "flex": dict(maps=["https://kinoflex.ru/sitemap.xml"], kids=r"sitemap-(film|serial|season)",
                  page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o", strict=True,
                  guess=lambda f: [f"https://kinoflex.ru/movie/{key_of(f, 'o')}"]
                  + ([f"https://kinoflex.ru/movie/{slug(f['t'], FLEX_RU).replace('-', '')}"] if ru(f) else []),
@@ -178,7 +178,9 @@ def sitemap(site):
         t = get(m)
         if "<sitemapindex" in t:
             for k in locs(t):
-                if re.search(site.get("kids", "."), k): out += locs(get(k))
+                if not re.search(site.get("kids", "."), k): continue
+                try: out += locs(get(k))
+                except Exception as e: print(f"  {k}: не открылась ({e}) — без неё", file=sys.stderr)
         else:
             out += locs(t)
     return out
