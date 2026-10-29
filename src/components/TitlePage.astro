@@ -131,7 +131,9 @@ const jsonld = {
 </Base>
 
 <style>
-  .hero-t { position: relative; overflow: hidden; isolation: isolate; }
+  /* фон уходит под шапку сайта до самого верха страницы — без ровного края под шапкой;
+     поднимаем на 96px и столько же добавляем сверху, поэтому содержимое остаётся на месте */
+  .hero-t { position: relative; overflow: hidden; isolation: isolate; margin-top: -96px; padding-top: 96px; }
   .t-bg { position: absolute; left: -10%; top: -10%; z-index: -1; width: 120%; max-width: none; height: 110%; object-fit: cover; /* низ — ровно по низу шапки, там и затухает */ filter: blur(64px) saturate(1.3); opacity: .28;
     -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent); mask-image: linear-gradient(to bottom, #000 40%, transparent); }
   .hero-t .wrap { padding-top: 24px; padding-bottom: 48px; }
