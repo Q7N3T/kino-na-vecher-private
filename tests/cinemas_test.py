@@ -61,6 +61,17 @@ class Guess(unittest.TestCase):
                      ("Папины дочки. Новые", "papiny-dochki-novye")]:
             self.assertEqual(c.slug(t, c.START), s)
 
+    def test_flex_russian_addresses(self):
+        g = lambda t, o: c.SITES["flex"]["guess"]({"t": t, "o": o})
+        self.assertEqual(g("Приключения девы Мэриан", "Maid Marian"), ["https://kinoflex.ru/movie/maidmarian", "https://kinoflex.ru/movie/prikliucheniiadevymerian"])
+        self.assertIn("https://kinoflex.ru/movie/vremiaprikliucheniifionnaikeik", g("Время приключений: Фионна и Кейк", "Adventure Time: Fionna & Cake"))
+        self.assertIn("https://kinoflex.ru/movie/rikimorti", g("Рик и Морти", "Rick and Morty"))
+
+    def test_guessed_address_knows_its_title(self):
+        rm = {"id": "tt2861424", "t": "Рик и Морти", "o": "Rick and Morty", "y": 2013}
+        got = dict((u, f["id"]) for u, f in c.guesses({"tt2861424": rm}, c.SITES["flex"]))
+        self.assertEqual(got["https://kinoflex.ru/movie/rikimorti"], "tt2861424")
+
     def test_premier(self):
         for t, s in [("Двойная жизнь", "dvojnaya-zhizn"), ("Холоп", "holop"), ("Горький 53", "gorkij-53"), ("Физрук", "fizruk")]:
             self.assertEqual(c.slug(t, c.PREMIER), s)
@@ -155,3 +166,18 @@ class CheckPage(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EndToEnd(unittest.TestCase):
+    def test_rick_and_morty_gets_flex_page_by_russian_address(self):
+        import tempfile
+        rm = {"id": "tt2861424", "t": "Рик и Морти", "o": "Rick and Morty", "y": 2013, "k": "s"}
+        films = {"tt2861424": rm}
+        live = {"https://kinoflex.ru/movie/rikimorti": [2013]}
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(c, "CACHE", os.path.join(d, "cache.json")), \
+                mock.patch.object(c, "SITES", {"flex": c.SITES["flex"]}), \
+                mock.patch.object(c, "sitemap", return_value=[]), \
+                mock.patch.object(c, "check_page", side_effect=lambda u, s: live.get(u, [])):
+            c.cinema_links(films)
+        self.assertEqual(rm.get("ln"), {"flex": "https://kinoflex.ru/movie/rikimorti"})

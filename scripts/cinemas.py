@@ -30,6 +30,9 @@ IVI = {"й": "j", "ы": "yi", "ё": "yo", "ц": "ts", "щ": "sch"}
 KION = {"й": "j", "ы": "y", "ё": "e", "ц": "ts", "щ": "sch"}
 START = {"й": "y", "ы": "y", "ё": "e", "ц": "c", "щ": "sch"}
 PREMIER = KION  # premier.one/show/dvojnaya-zhizn-mi, 16-let-i-9-mesyatsev, holop
+# у части тайтлов FLEX адрес — русское название паспортной транслитерацией, слитно:
+# prikliucheniiadevymerian («Приключения девы Мэриан»), vremiaprikliucheniifionnaikeik
+FLEX_RU = {"й": "i", "ы": "y", "ё": "e", "ц": "ts", "щ": "shch", "х": "kh", "ю": "iu", "я": "ia", "ъ": "ie"}
 
 
 def slug(title, scheme):
@@ -42,7 +45,8 @@ ru = lambda f: bool(re.search(r"[а-яё]", f["t"], re.I))
 SITES = {
     "flex": dict(maps=["https://kinoflex.ru/sitemap-film.xml", "https://kinoflex.ru/sitemap-serial.xml"],
                  page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o", strict=True,
-                 guess=lambda f: [f"https://kinoflex.ru/movie/{key_of(f, 'o')}"],
+                 guess=lambda f: [f"https://kinoflex.ru/movie/{key_of(f, 'o')}"]
+                 + ([f"https://kinoflex.ru/movie/{slug(f['t'], FLEX_RU).replace('-', '')}"] if ru(f) else []),
                  per_run=20000, read=60_000, ver=2,
                  # «Сериал Уэнсдэй 2022–2025 — смотреть…»: годы — все в заголовке, кроме названия
                  year=r"<title>[^<]*?((?:(?:19|20)\d\d\D{0,3})+)—[^<]*</title>"),
@@ -108,6 +112,11 @@ def page_years(html, year_re):
     """Годы со страницы: один или диапазон, как у сериалов («2022–2025»); [] — года нет."""
     m = re.search(year_re, html)  # у regex может быть несколько вариантов — берём сработавший
     return sorted({int(y) for y in re.findall(r"(?:19|20)\d\d", next(g for g in m.groups() if g))}) if m else []
+
+
+def guesses(films, site):
+    """(адрес, тайтл) для каждого угаданного адреса."""
+    return [(u, f) for f in films.values() for u in (site.get("guess") or (lambda f: []))(f) if len(url_key(u, site["by"])) >= 3]
 
 
 def candidates(films, pages, by):
@@ -190,9 +199,11 @@ def cinema_links(films):
             print(f"  {name}: карта сайта не открылась ({e}) — в этот раз без его ссылок", file=sys.stderr)
             continue
         listed = len(pages)
-        if site.get("guess"):
-            pages |= {u for f in films.values() for u in site["guess"](f) if len(url_key(u, site["by"])) >= 3}
-        cands = candidates(films, pages, site["by"])
+        cands = candidates(films, pages, site["by"]) if pages else {}
+        # угаданный адрес сразу знает, для какого тайтла угадан (русский адрес FLEX с английским
+        # названием не сопоставить); тёзки, угадавшие тот же адрес, разойдутся по году
+        for u, f in guesses(films, site):
+            if f not in cands.setdefault(u, []): cands[u].append(f)
         # кеш: адрес → [годы со страницы, когда проверено, версия]; сначала непроверенные, потом самые давние
         # ver — версия проверки у кинотеатра: поменялась — проверяем его страницы заново
         ver = site.get("ver", 1)
