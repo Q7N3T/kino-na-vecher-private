@@ -85,6 +85,8 @@ export function status(f, year = new Date().getFullYear()) {
 // Постеры и фото TMDB идут через прокси wsrv.nl: image.tmdb.org открывается не везде,
 // а wsrv заодно сжимает в WebP нужного размера.
 export function tmdbImg(path, w, size = 'w500') {
+  // фото с Wikimedia Commons (полный адрес) — не портрет по шаблону TMDB: квадрат с лицом в центре
+  if (path.startsWith('https://')) return 'https://wsrv.nl/?url=' + encodeURIComponent(path) + `&w=${w}&h=${w}&fit=cover&a=attention&output=webp`;
   return 'https://wsrv.nl/?url=' + encodeURIComponent('https://image.tmdb.org/t/p/' + size + path) + '&w=' + w + '&output=webp';
 }
 

@@ -84,7 +84,8 @@ export function load() {
       if (!key) return;
       let a = people.get(key);
       if (!a) people.set(key, (a = { slug: key, n: c.n, p: '', roles: [], score: 0 }));
-      if (!a.p && c.p) a.p = c.p;
+      const commons = (p) => p.startsWith('https://'); // фото TMDB важнее фото с Commons
+      if (c.p && (!a.p || (commons(a.p) && !commons(c.p)))) a.p = c.p;
       a.roles.push({ f, r: c.r, i });
       a.score += f.pp / (i + 1);
     });

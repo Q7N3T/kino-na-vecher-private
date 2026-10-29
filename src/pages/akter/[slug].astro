@@ -12,6 +12,8 @@ const roles = [...a.roles].sort((x, y) => y.f.pp - x.f.pp);
 const films = roles.filter((r) => !r.f.k), series = roles.filter((r) => r.f.k);
 const best = [...roles].sort((x, y) => y.f.s - x.f.s)[0];
 const yrs = roles.map((r) => r.f.y);
+// фото с Commons (свободные лицензии) — ссылка на страницу файла, там автор и лицензия
+const commons = a.p?.startsWith('https://upload.wikimedia.org/') && 'https://commons.wikimedia.org/wiki/File:' + a.p.split('/').at(-2);
 ---
 <Base title={a.n} section="aktery/" image={a.p ? tmdbImg(a.p, 500, 'w500') : undefined}
   description={`${a.n}: ${roles.length} ${plural(roles.length, 'роль', 'роли', 'ролей')} в фильмах и сериалах. ${best ? 'Лучший по рейтингу — «' + best.f.t + '».' : ''}`}>
@@ -23,6 +25,7 @@ const yrs = roles.map((r) => r.f.y);
         <div>
           <h1>{a.n}</h1>
           <p>{films.length ? `${films.length} ${plural(films.length, 'фильм', 'фильма', 'фильмов')}` : ''}{films.length && series.length ? ' и ' : ''}{series.length ? `${series.length} ${plural(series.length, 'сериал', 'сериала', 'сериалов')}` : ''} в базе · {Math.min(...yrs)}–{Math.max(...yrs)}</p>
+          {commons && <p class="photo-src">Фото — <a href={commons} rel="noopener" target="_blank">Wikimedia Commons</a>, автор и лицензия — на странице файла</p>}
           {best && <p class="best">Лучший по рейтингу: <a href={`${base}${best.f.k ? 'serial' : 'film'}/${best.f.slug}/`}>{best.f.t}</a>{best.r ? `, роль — ${best.r}` : ''}</p>}
         </div>
       </div>
@@ -45,6 +48,8 @@ const yrs = roles.map((r) => r.f.y);
   h1 { margin: 0; font-size: clamp(34px, 5vw, 56px); font-weight: 700; line-height: 1.08; }
   p { margin: 10px 0 0; color: var(--muted); font-size: 17px; }
   .best a { text-decoration: none; }
+  .photo-src { font-size: 13px; color: var(--dim); }
+  .photo-src a { color: inherit; }
   :global(.card-r) { font-size: 13px; color: var(--accent); }
   @media (max-width: 760px) { .face { width: 140px; height: 140px; } }
 </style>

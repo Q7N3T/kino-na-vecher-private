@@ -11,6 +11,7 @@
 import argparse, concurrent.futures as cf, gzip, json, os, re, sys, time, urllib.parse, urllib.request
 
 from cinemas import cinema_links
+from wiki_photos import wiki_photos
 
 BASE = "https://datasets.imdbws.com/"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -208,11 +209,44 @@ def build_imdb(min_votes):
                 need.add(nid)
 
     print("Имена…", file=sys.stderr)
-    names = {r[0]: r[1] for r in rows("name.basics") if r[0] in need}
+    want = crew_names()  # актёры из составов TMDB — для фото из Wikidata нужны их номера IMDb
+    names, cands = {}, {}
+    for r in rows("name.basics"):
+        if r[0] in need: names[r[0]] = r[1]
+        if r[1] in want or r[0] in need: cands.setdefault(r[1], []).append(r)
+    os.makedirs(DL, exist_ok=True)
+    with open(os.path.join(DL, "people.json"), "w", encoding="utf-8") as fh:
+        json.dump(people_ids(cands, need, set(films)), fh, ensure_ascii=False)
     for f in films.values():
         f["d"] = [names[x] for x in f.get("d", []) if x in names]
         f["cast"] = [{"n": names[n], "r": role} if role else {"n": names[n]} for n, role in f.get("cast", []) if n in names]
     return films
+
+
+def crew_names():
+    """Имена актёров из составов TMDB, что уже лежат в базе (data/syn)."""
+    out = set()
+    for n in range(SYN_PARTS):
+        try: part = json.load(open(os.path.join(SYN, f"{n:02d}.json"), encoding="utf-8"))
+        except (OSError, ValueError): continue
+        for x in part.values():
+            if isinstance(x, dict): out.update(c[0] for c in x.get("c") or [] if c and c[0])
+    return out
+
+
+def people_ids(cands, need, ids):
+    """Имя → номер IMDb для поиска фото. cands: имя → строки name.basics (nconst, имя, …, профессии,
+    известные тайтлы). Тёзки: берём того, кто снимался в наших тайтлах, иначе единственного актёра;
+    не различить — null (фото не ищем, чтобы не показать чужое лицо)."""
+    out = {}
+    for name, rs in cands.items():
+        pick = [r for r in rs if r[0] in need]
+        if len(pick) != 1:
+            actors = [r for r in rs if re.search(r"actor|actress", r[4] if len(r) > 4 else "")]
+            ours = [r for r in actors if set((r[5] if len(r) > 5 else "").split(",")) & ids]
+            pick = ours if len(ours) == 1 else actors if len(actors) == 1 else []
+        out[name] = pick[0][0] if len(pick) == 1 else None
+    return out
 
 
 WATCH_REGION = "RU"
@@ -468,6 +502,7 @@ if __name__ == "__main__":
         films = load_existing()
         tmdb(films)
         kinopoisk(films)
+        wiki_photos(films)
         cinema_links(films)
     else:
         films = build_imdb(a.min_votes)
