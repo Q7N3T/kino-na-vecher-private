@@ -26,16 +26,12 @@ jobs:
                   return getattr(e, "code", "ERR"), u, str(e)
           locs = lambda t: re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", t)
           SITEMAPS = {
-              "ivi": ["https://www.ivi.ru/sitemap.xml"],
-              "start": ["https://start.ru/sitemap/movies.xml", "https://start.ru/sitemap/series.xml"],
-              "premier": ["https://premier.one/sitemap_index.xml"],
-              "amediateka": ["https://www.amediateka.ru/sitemap-content.xml"],
-              "kion": ["https://kion.ru/sitemap0.xml", "https://kion.ru/sitemap1.xml"],
-              "flex": ["https://kinoflex.ru/sitemap-film.xml", "https://kinoflex.ru/sitemap-serial.xml"],
-              "wink": ["https://wink.ru/robots.txt", "https://wink.ru/sitemap.xml"],
-              "more": ["https://more.tv/robots.txt", "https://more.tv/sitemap.xml"],
-              "okko": ["https://okko.tv/sitemap.xml"],
+              "ivi": ["https://www.ivi.ru/sitemap-watch-1.xml", "https://www.ivi.ru/sitemap-watch-4.xml"],
+              "premier": ["https://premier.one/sitemap_main.xml"],
+              "kion": ["https://kion.ru/sitemap2.xml", "https://kion.ru/sitemapstatic.xml"],
+              "amediateka": ["https://www.amediateka.ru/sitemap-content.xml", "https://www.amediateka.ru/sitemap-seasons.xml"],
           }
+          from collections import Counter
           for site, urls in SITEMAPS.items():
               print(f"::group::{site}")
               pages = []
@@ -55,8 +51,12 @@ jobs:
                           print(f"  {k} -> {c2} ссылок: {len(l2)}"); print(*l2[:6], sep="\n    ")
                           pages += l2[:2]
                   else:
-                      print(*ls[:10], sep="\n    ")
-                      pages += ls[:2]
+                      shapes = Counter("/".join(l.split("/")[3:5]) .split("/")[0] + "/" + str(l.count("/")) for l in ls)
+                      print("  виды адресов:", shapes.most_common(12))
+                      import random; random.seed(1)
+                      smp = random.sample(ls, min(12, len(ls)))
+                      print(*smp, sep="\n    ")
+                      pages += [l for l in smp if l.count("/") <= 4][:2]
               # что на странице: заголовок, og, год, imdb, ld+json
               for p in pages[:2]:
                   code, final, t = get(p)
