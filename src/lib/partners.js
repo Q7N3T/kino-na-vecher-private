@@ -38,14 +38,6 @@ const BY_NAME = {
   'иви': 'https://www.ivi.ru/search/?q={q}', 'ivi': 'https://www.ivi.ru/search/?q={q}',
   'wink': 'https://wink.ru/search?query={q}', 'kion': 'https://kion.ru/search?text={q}', 'start': 'https://start.ru/search?q={q}',
 };
-// крупные кинотеатры, которых нет в данных JustWatch, — для строки «Поискать в кинотеатрах»
-const ELSEWHERE = [
-  [117],
-  ['ivi', 'Иви', 'https://www.ivi.ru/search/?q={q}'],
-  [115], ['wink', 'Wink', 'https://wink.ru/search?query={q}'], ['kion', 'KION', 'https://kion.ru/search?text={q}'],
-  ['start', 'Start', 'https://start.ru/search?q={q}'], [570], [116], [557],
-];
-
 const slug = (f) => String(f.o || f.t).toLowerCase().replace(/[^a-z0-9]+/g, '');
 const fill = (t, f) => t.replaceAll('{q}', encodeURIComponent(f.t)).replaceAll('{id}', f.id).replaceAll('{slug}', slug(f));
 const direct = (f, providerId, name = '') => DIRECT[providerId]?.(f) || f.ln?.[sitemapKey(name)];
@@ -59,15 +51,10 @@ export function watchLink(f, providerId, name = '') {
   return t ? fill(t, f) : f.wp.l;
 }
 
-// shown — номера и названия (в нижнем регистре) кинотеатров, которые уже есть в «Где посмотреть»
-export function searchLinks(f, shown = []) {
-  return ELSEWHERE.filter(([k, name]) => !shown.includes(k) && !shown.includes((name || SEARCH[k][0]).toLowerCase()))
-    .map(([k, name, url]) => (typeof k === 'number' ? { pid: k, name: SEARCH[k][0], url: watchLink(f, k) } : { key: k, name, url: fill(url, f) }));
-}
-
-// Строки блока «Где посмотреть». rows — кинотеатры, где фильм есть точно (JustWatch) или где известна
-// его страница (Кинопоиск по номеру из Wikidata, остальные — из карт сайта); один кинотеатр —
-// одна строка со всеми способами. more — остальные кинотеатры, туда ведёт поиск по названию.
+// Строки блока «Где посмотреть» — только кинотеатры, где тайтл можно посмотреть: есть в данных
+// JustWatch или его страница нашлась в каталоге самого кинотеатра (FLEX, Иви, KION…; страница
+// Кинопоиска по номеру из Wikidata — не значит, что там можно смотреть, — отдельно не показываем).
+// Один кинотеатр — одна строка со всеми способами.
 // logos — логотипы кинотеатров по номеру, собранные по всей базе; icons — свои логотипы тех, кого
 // нет в TMDB (ключ → файл в public/logos): строка получает icon, его показывают вместо буквы.
 const KINDS = [['s', 'по подписке'], ['f', 'бесплатно'], ['a', 'бесплатно с рекламой'], ['r', 'аренда'], ['b', 'покупка']];
@@ -82,14 +69,9 @@ export function watchRows(f, logos = {}, icons = {}) {
       if (!row.kinds.includes(label)) row.kinds.push(label);
     }
   const rows = [...byPid.values()].map(({ kinds, ...r }) => ({ ...r, sub: cap(kinds.join(', ')) }));
-  if (f.kp && !rows.some((r) => r.pid === 117))
-    rows.push({ pid: 117, name: 'Кинопоиск', logo: logos[117], sub: 'Страница фильма', url: DIRECT[117](f) });
   for (const [k, name] of Object.entries(SITEMAP))
     if (f.ln?.[k] && !rows.some((r) => sitemapKey(r.name) === k))
-      rows.push({ pid: k, name, logo: null, sub: 'Страница фильма', url: f.ln[k] });
+      rows.push({ pid: k, name, logo: null, sub: f.k ? 'Страница сериала' : 'Страница фильма', url: f.ln[k] });
   for (const r of rows) if (!r.logo && icons[sitemapKey(r.name)]) r.icon = icons[sitemapKey(r.name)];
-  const shown = rows.flatMap((r) => [r.pid, r.name.toLowerCase(), sitemapKey(r.name)]);
-  // у строк «Поискать в» — маленький логотип: из TMDB по номеру или свой по ключу
-  const more = searchLinks(f, shown).map((l) => ({ ...l, logo: logos[l.pid] || null, icon: icons[l.key] || (!logos[l.pid] && icons[sitemapKey(l.name)]) || undefined }));
-  return { rows, more };
+  return rows;
 }

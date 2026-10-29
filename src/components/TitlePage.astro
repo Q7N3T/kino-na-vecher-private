@@ -14,7 +14,7 @@ const section = f.k ? 'serialy/' : 'filmy/';
 const desc = f.syn ? f.syn.slice(0, 180).replace(/\s+\S*$/, '') + '…' : `${kindName(f)} ${years(f)}. Рейтинг IMDb ${f.imdb.toFixed(1)}.`;
 const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${f.o || f.t} ${f.y} трейлер`);
 // где посмотреть: кинотеатры, где фильм есть точно или известна его страница, и поиск в остальных
-const { rows: watch, more: searchMore } = watchRows(f, load().logos, load().icons);
+const watch = watchRows(f, load().logos, load().icons);
 // две строки фактов вместо чипов и таблицы
 const facts = [kindName(f), f.genres.slice(0, 3).join(', '), years(f),
   f.k ? [f.ss && `${f.ss} ${plural(f.ss, 'сезон', 'сезона', 'сезонов')}`, f.ep && `${num(f.ep)} ${plural(f.ep, 'серия', 'серии', 'серий')}`].filter(Boolean).join(', ') : dur(f.min),
@@ -77,15 +77,8 @@ const jsonld = {
                 ))}
               </ul>
             )}
-            <div class="w-more">
-              <p>{watch.length ? 'Нет нужного? Поискать в кинотеатрах' : 'Поискать в кинотеатрах'}</p>
-              <ul>{searchMore.map((l) => (
-                <li><a href={l.url} rel="noopener" target="_blank" data-umami-event="Поискать в кинотеатре" data-umami-event-provider={l.name} data-umami-event-title={f.t}>
-                  <span class="chip-i" aria-hidden="true">{l.name[0]}{l.icon ? <img src={`${base}logos/${l.icon}`} alt="" width="20" height="20" loading="lazy" />
-                    : l.logo && <img src={tmdbImg(l.logo, 40, 'w92')} alt="" width="20" height="20" loading="lazy" onerror="knvImg(this)" />}</span>{l.name}</a></li>
-              ))}</ul>
-            </div>
-            <p class="where-src">Наличие — по данным <a href="https://www.justwatch.com" rel="noopener" target="_blank">JustWatch</a>, адреса страниц — по Wikidata и картам сайтов кинотеатров.</p>
+            {!watch.length && <p class="w-none">Легально посмотреть в России пока негде — по крайней мере, мы такого не нашли.</p>}
+            <p class="where-src">Наличие — по данным <a href="https://www.justwatch.com" rel="noopener" target="_blank">JustWatch</a>, адреса страниц — по Wikidata и каталогам кинотеатров.</p>
           </section>
           {f.syn && <p class="syn">{f.syn}</p>}
           <p class="more">Подробнее: <a href={`https://www.imdb.com/title/${f.id}/`} rel="noopener" target="_blank">IMDb ↗</a> · <a href={`https://www.themoviedb.org/redirect?external_source=imdb_id&external_id=${f.id}`} rel="noopener" target="_blank">TMDB ↗</a></p>
@@ -173,14 +166,7 @@ const jsonld = {
   .w-n small { font-size: 14px; line-height: 20px; color: var(--dim); }
   .w-go { color: var(--dim); flex-shrink: 0; transition: transform 500ms var(--ease), color 300ms var(--ease); }
   .w-row:hover .w-go { color: var(--accent); transform: translate(2px, -2px); }
-  /* «Поискать в кинотеатрах»: значок и название — одной «таблеткой», переносятся целиком */
-  .w-more p { margin: 0 0 12px; font-size: 14px; line-height: 20px; color: var(--dim); }
-  .w-more ul { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-  .w-more a { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 8px; border-radius: 9999px; background: var(--surface); border: 1px solid var(--line-2);
-    color: var(--text-2); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: color 300ms var(--ease), border-color 300ms var(--ease), background 300ms var(--ease); }
-  .w-more a:hover { color: var(--text); border-color: var(--accent); background: var(--surface-2); }
-  .chip-i { position: relative; overflow: hidden; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: var(--surface-2); font-family: var(--logo); font-size: 11px; color: var(--text-2); }
-  .chip-i img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .w-none { margin: 0 0 12px; font-size: 15px; line-height: 24px; color: var(--muted); }
   .where-src { margin: 0; font-size: 12px; line-height: 16px; color: var(--dim); }
   .where-src a { color: inherit; }
   .t-body { padding-top: 48px; padding-bottom: 16px; }
