@@ -34,7 +34,7 @@ jobs:
           restore-keys: tmdb-cache-
 
       # и проверенные страницы кинотеатров — чтобы не открывать их каждую неделю
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
           path: data/cinema-cache.json
           key: cinema-cache-${{ github.run_id }}
@@ -52,6 +52,13 @@ jobs:
             exit 1
           fi
           python3 scripts/build_films.py --tmdb
+
+      # проверенные страницы сохраняются, даже если запуск упал или его прервали по времени
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: data/cinema-cache.json
+          key: cinema-cache-${{ github.run_id }}
 
       - name: Закоммитить обновлённую базу
         run: |

@@ -8,13 +8,14 @@
 Работает только оттуда, где сайты кинотеатров открываются (GitHub Actions). Okko, Wink и More.tv
 из-за границы закрыты, у Premier в карте сайта только подборки, Амедиатека не пускает роботов.
 """
-import concurrent.futures as cf, datetime, gzip, json, os, re, sys, urllib.error, urllib.request
+import concurrent.futures as cf, datetime, gzip, json, os, re, sys, time, urllib.error, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, "data", "cinema-cache.json")
 UA = {"User-Agent": "Mozilla/5.0 (compatible; kino-na-vecher/1.0; +https://github.com/Q7N3T/kino-na-vecher-private)"}
 PER_RUN = 1500  # сколько страниц проверять за запуск на кинотеатр — остальное в следующие недели
 RECHECK = 30  # через сколько дней проверять страницу снова: фильмы приходят и уходят, страница может стать 404
+MINUTES = 8  # не дольше стольких минут на кинотеатр за запуск: остальное — в следующие запуски
 
 # key: карта сайта (индекс или список), какие дочерние карты брать, какие адреса — страницы тайтлов,
 # как найти год на странице. by: "o" — адрес из оригинального названия, "t" — из русского.
@@ -199,18 +200,29 @@ def cinema_links(films):
         # среди одинаково давних — сначала популярное: за первые запуски проверяется то, что смотрят
         pop = lambda u: max(f.get("pop", 0) for f in cands[u])
         todo = sorted((u for u in cands if age(u) >= RECHECK), key=lambda u: (age(u), pop(u)), reverse=True)[:site.get("per_run", PER_RUN)]
-        with cf.ThreadPoolExecutor(8) as ex:
+        stop, done = time.monotonic() + MINUTES * 60, 0
+        ex = cf.ThreadPoolExecutor(8)
+        try:
             for u, y in zip(todo, ex.map(lambda u: check_page(u, site), todo)):
                 if y is not None: cache[u] = [y, today, ver]
+                done += 1
+                if time.monotonic() > stop: break  # время вышло — остальное в следующий раз
+        finally:
+            ex.shutdown(wait=True, cancel_futures=True)
+        save(cache)  # после каждого кинотеатра: оборвётся запуск — проверенное не пропадёт
         links = assign(cands, {u: cache[u][0] for u in cands if age(u) < 10**6})
         for f in films.values():
             ln = f.setdefault("ln", {})
             ln.pop(name, None)
             if f["id"] in links: ln[name] = links[f["id"]]
         print(f"  {name}: в карте сайта {listed:,}, адресов к проверке {len(cands):,}, "
-              f"проверено сейчас {len(todo):,}, ссылок {len(links):,}", file=sys.stderr)
+              f"проверено сейчас {done:,} из {len(todo):,}, ссылок {len(links):,}", file=sys.stderr)
     for f in films.values():
         if not f.get("ln"): f.pop("ln", None)
+    save(cache)
+
+
+def save(cache):
     with open(CACHE, "w", encoding="utf-8") as fh:
         json.dump(cache, fh, ensure_ascii=False, separators=(",", ":"))
 

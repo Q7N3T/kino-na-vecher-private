@@ -11,9 +11,15 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
           path: data/cinema-cache.json
           key: cinema-cache-${{ github.run_id }}
           restore-keys: cinema-cache-
       - run: python3 scripts/cinemas.py
+      # проверенные страницы сохраняются, даже если запуск упал или его прервали по времени
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: data/cinema-cache.json
+          key: cinema-cache-${{ github.run_id }}
