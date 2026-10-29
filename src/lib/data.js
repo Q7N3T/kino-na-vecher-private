@@ -70,6 +70,9 @@ export function load() {
     f.ln = x.l || null; // страницы фильма в кинотеатрах из их карт сайта: {flex, ivi, start, kion}
     f.w = watchNow(f.wp);
     if (!f.crew.length) f.crew = (f.cast || []).map((c) => ({ n: c.n, r: c.r || '', p: '' }));
+    // один актёр — одна карточка: IMDb и TMDB бывает пишут роль дважды по-разному («Uryu» / «Uryuu»)
+    const seenNames = new Set();
+    f.crew = f.crew.filter((c) => !seenNames.has(slugify(c.n)) && seenNames.add(slugify(c.n)));
   }
   films.sort((a, b) => b.pp - a.pp);
 
@@ -87,7 +90,12 @@ export function load() {
     });
   const actors = [...people.values()].filter((a) => a.roles.length >= 3).sort((a, b) => b.score - a.score);
   const actorBySlug = new Map(actors.map((a) => [a.slug, a]));
-  for (const f of films) for (const c of f.crew) c.slug = actorBySlug.has(slugify(c.n)) ? slugify(c.n) : '';
+  for (const f of films)
+    for (const c of f.crew) {
+      c.slug = actorBySlug.has(slugify(c.n)) ? slugify(c.n) : '';
+      // нет фото в составе этого тайтла (состав из IMDb, без фото) — берём фото актёра из других тайтлов
+      if (!c.p) c.p = people.get(slugify(c.n))?.p || '';
+    }
 
   // логотипы кинотеатров по номеру — со всей базы: так у Кинопоиска или Okko есть логотип и там, где JustWatch о фильме не знает
   const logos = {};

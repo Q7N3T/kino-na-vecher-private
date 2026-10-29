@@ -31,3 +31,14 @@ test('где смотреть сразу — название по-русски'
   const { watchNow } = await import('../src/lib/data.js');
   assert.deepEqual(watchNow({ s: [[117, 'Kinopoisk', '/k.png']] }), ['Кинопоиск', '/k.png', 's']);
 });
+
+test('состав тайтла: актёр без фото здесь получает фото из других тайтлов, один актёр — одна карточка', async () => {
+  const { load } = await import('../src/lib/data.js');
+  const { films } = load();
+  const bleach = films.find((f) => f.id === 'tt14986406'); // «Блич: Тысячелетняя кровавая война»: в составе TMDB фото не у всех
+  assert.ok(bleach.crew.find((c) => c.n === 'Noriaki Sugiyama').p, 'фото Сугиямы — с других его тайтлов');
+  for (const f of films) {
+    const names = f.crew.map((c) => c.n);
+    assert.equal(new Set(names).size, names.length, `${f.t}: актёр повторяется`);
+  }
+});
