@@ -46,3 +46,27 @@ test('названия кинотеатров по-русски: TMDB пишет
   assert.equal(providerName(2555, 'Bloodstream'), 'Bloodstream');
   assert.ok(watchLink(f, 117).startsWith('https://www.kinopoisk.ru/'));
 });
+
+test('Кинопоиск — прямо страница фильма, когда известен его номер; иначе поиск', () => {
+  assert.equal(watchLink({ ...f, kp: 77044 }, 117), 'https://www.kinopoisk.ru/film/77044/');
+  assert.equal(searchLinks({ ...f, kp: 77044 }).find((l) => l.name === 'Кинопоиск').url, 'https://www.kinopoisk.ru/film/77044/');
+  assert.ok(watchLink(f, 117).includes('kp_query='));
+});
+
+test('строки «Где посмотреть»: один кинотеатр — одна строка со всеми способами; Кинопоиск и FLEX — страница фильма', async () => {
+  const { watchRows } = await import('../src/lib/partners.js');
+  const film = { ...f, o: 'Friends', kp: 77044, wp: { l: 'x', s: [[115, 'Okko', '/okko.png']], r: [[2, 'Apple TV Store', '/a.png']], b: [[2, 'Apple TV Store', '/a.png']] } };
+  const { rows, more } = watchRows(film, { 117: '/kp.png' });
+  assert.deepEqual(rows.map((r) => [r.name, r.sub]), [['Okko', 'По подписке'], ['Apple TV', 'Аренда, покупка'], ['Кинопоиск', 'Страница фильма'], ['FLEX', 'Страница фильма']]);
+  assert.equal(rows[2].logo, '/kp.png', 'логотип из общей таблицы, даже если JustWatch о фильме не знает');
+  assert.equal(rows[2].url, 'https://www.kinopoisk.ru/film/77044/');
+  assert.ok(!more.some((l) => ['Okko', 'Кинопоиск', 'FLEX'].includes(l.name)), 'в «Поискать» — только остальные');
+  assert.ok(more.some((l) => l.name === 'Иви'));
+});
+
+test('строки «Где посмотреть» без данных: только то, что знаем точно, остальное — поиск', async () => {
+  const { watchRows } = await import('../src/lib/partners.js');
+  const { rows, more } = watchRows({ id: 'tt1', t: 'Фильм', wp: null }, {});
+  assert.equal(rows.length, 0);
+  assert.ok(more.some((l) => l.name === 'Кинопоиск' && l.url.includes('kp_query=')));
+});

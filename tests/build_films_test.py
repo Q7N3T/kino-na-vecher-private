@@ -82,6 +82,24 @@ class WatchProviders(unittest.TestCase):
         self.assertIsNone(b.watch_providers(self.det({"link": "x"})))
 
 
+class Kinopoisk(unittest.TestCase):
+    """Номер фильма на Кинопоиске — из Wikidata (P2603) по номеру IMDb (P345)."""
+
+    def test_parses_sparql_answer(self):
+        ans = {"results": {"bindings": [
+            {"imdb": {"value": "tt0141842"}, "kp": {"value": "79848"}},
+            {"imdb": {"value": "tt0111161"}, "kp": {"value": "326"}},
+            {"imdb": {"value": "tt0111161"}, "kp": {"value": "xx"}},  # мусор — пропускаем
+        ]}}
+        self.assertEqual(b.parse_kp(ans), {"tt0141842": 79848, "tt0111161": 326})
+
+    def test_query_asks_for_all_ids_of_the_batch(self):
+        q = b.kp_query(["tt1", "tt2"])
+        self.assertIn('"tt1" "tt2"', q)
+        self.assertIn("wdt:P345", q)
+        self.assertIn("wdt:P2603", q)
+
+
 class RoundTrip(unittest.TestCase):
     def test_reading_and_writing_the_base_changes_nothing(self):
         """Запись повторяема: прочитанная и снова записанная база — байт в байт та же."""

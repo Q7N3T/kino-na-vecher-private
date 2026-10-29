@@ -364,6 +364,43 @@ def tmdb(films):
             if m.get(k): f[k] = m[k]
 
 
+def kp_query(ids):
+    """SPARQL: номер на Кинопоиске (P2603) для пачки номеров IMDb (P345)."""
+    values = " ".join(f'"{x}"' for x in ids)
+    return f"SELECT ?imdb ?kp WHERE {{ VALUES ?imdb {{ {values} }} ?item wdt:P345 ?imdb; wdt:P2603 ?kp. }}"
+
+
+def parse_kp(ans):
+    out = {}
+    for row in ans.get("results", {}).get("bindings", []):
+        kp = row.get("kp", {}).get("value", "")
+        if kp.isdigit(): out.setdefault(row["imdb"]["value"], int(kp))
+    return out
+
+
+def kinopoisk(films):
+    """Прямые ссылки на Кинопоиск: kinopoisk.ru/film/<номер>/ — номер из Wikidata по номеру IMDb.
+    Wikidata недоступна — оставляем номера, что уже были в базе."""
+    ids, found = list(films), {}
+    for i in range(0, len(ids), 250):
+        body = urllib.parse.urlencode({"query": kp_query(ids[i:i + 250]), "format": "json"}).encode()
+        for attempt in range(4):
+            try:
+                req = urllib.request.Request("https://query.wikidata.org/sparql", data=body,
+                                             headers={**UA, "Accept": "application/sparql-results+json"})
+                with urllib.request.urlopen(req, timeout=120) as r:
+                    found.update(parse_kp(json.load(r)))
+                break
+            except (urllib.error.URLError, OSError, ValueError) as e:
+                if attempt == 3:
+                    print(f"  Wikidata не ответила ({e}) — номера Кинопоиска остаются прежними", file=sys.stderr)
+                    return
+                time.sleep(2 ** attempt * 3)
+    for tid, f in films.items():
+        if tid in found: f["kp"] = found[tid]
+    print(f"Кинопоиск: номер есть у {sum('kp' in f for f in films.values()):,} из {len(films):,}", file=sys.stderr)
+
+
 SYN = os.path.join(ROOT, "data", "syn")
 SYN_PARTS = 64  # описания и состав с фото лежат отдельно и грузятся только на странице фильма
 CAST, CAST_VER = 10, 4  # сколько актёров брать из TMDB; версия — чтобы перезапросить кеш при изменениях (2: где посмотреть, 3: жанры TMDB, 4: с Кинопоиском)
@@ -427,6 +464,7 @@ if __name__ == "__main__":
     if a.tmdb:
         films = load_existing()
         tmdb(films)
+        kinopoisk(films)
     else:
         films = build_imdb(a.min_votes)
     write(films)

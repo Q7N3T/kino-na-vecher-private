@@ -88,7 +88,10 @@ export function load() {
   const actorBySlug = new Map(actors.map((a) => [a.slug, a]));
   for (const f of films) for (const c of f.crew) c.slug = actorBySlug.has(slugify(c.n)) ? slugify(c.n) : '';
 
-  cache = { films, byId: new Map(films.map((f) => [f.id, f])), actors, actorBySlug };
+  // логотипы кинотеатров по номеру — со всей базы: так у Кинопоиска или Okko есть логотип и там, где JustWatch о фильме не знает
+  const logos = {};
+  for (const f of films) for (const k of ['s', 'f', 'a', 'r', 'b']) for (const [pid, , logo] of f.wp?.[k] || []) if (logo && !logos[pid]) logos[pid] = logo;
+  cache = { films, byId: new Map(films.map((f) => [f.id, f])), actors, actorBySlug, logos };
   return cache;
 }
 

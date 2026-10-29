@@ -9,6 +9,12 @@
 // Адреса поиска собраны вручную и могут поменяться на стороне кинотеатра — проверяйте кликом.
 export const PARTNERS = {};
 
+// прямая страница фильма, когда кинотеатр известен по номеру из открытых данных:
+// Кинопоиск — номер из Wikidata (P2603), его подтягивает scripts/build_films.py в поле kp
+const DIRECT = {
+  117: (f) => f.kp && `https://www.kinopoisk.ru/film/${f.kp}/`,
+};
+
 const SEARCH = {
   117: ['Кинопоиск', 'https://www.kinopoisk.ru/index.php?kp_query={q}'],
   115: ['Okko', 'https://okko.tv/search/{q}'],
@@ -44,6 +50,7 @@ const fill = (t, f) => t.replaceAll('{q}', encodeURIComponent(f.t)).replaceAll('
 export const providerName = (providerId, name) => SEARCH[providerId]?.[0] || name;
 
 export function watchLink(f, providerId, name = '') {
+  if (!PARTNERS[providerId] && DIRECT[providerId]?.(f)) return DIRECT[providerId](f);
   const t = PARTNERS[providerId] || SEARCH[providerId]?.[1] || BY_NAME[name.toLowerCase()];
   return t ? fill(t, f) : f.wp.l;
 }
@@ -53,4 +60,27 @@ export function searchLinks(f, shown = []) {
   return ELSEWHERE.filter(([k, name, url]) => !shown.includes(k) && !shown.includes((name || SEARCH[k][0]).toLowerCase())
       && !(url?.includes('{slug}') && !slug(f))) // нет латинского названия — нет адреса FLEX
     .map(([k, name, url]) => (typeof k === 'number' ? { name: SEARCH[k][0], url: watchLink(f, k) } : { name, url: fill(url, f) }));
+}
+
+// Строки блока «Где посмотреть». rows — кинотеатры, где фильм есть точно (JustWatch) или где известна
+// его страница (Кинопоиск по номеру из Wikidata, FLEX по оригинальному названию); один кинотеатр —
+// одна строка со всеми способами. more — остальные кинотеатры, туда ведёт поиск по названию.
+// logos — логотипы кинотеатров по номеру, собранные по всей базе.
+const KINDS = [['s', 'по подписке'], ['f', 'бесплатно'], ['a', 'бесплатно с рекламой'], ['r', 'аренда'], ['b', 'покупка']];
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+
+export function watchRows(f, logos = {}) {
+  const byPid = new Map();
+  for (const [k, label] of KINDS)
+    for (const [pid, name, logo] of f.wp?.[k] || []) {
+      const key = SEARCH[pid]?.[0] || pid; // Apple TV Store и Apple TV — один кинотеатр
+      const row = byPid.get(key) || byPid.set(key, { pid, name: providerName(pid, name), logo: logo || logos[pid], kinds: [], url: watchLink(f, pid, name) }).get(key);
+      if (!row.kinds.includes(label)) row.kinds.push(label);
+    }
+  const rows = [...byPid.values()].map(({ kinds, ...r }) => ({ ...r, sub: cap(kinds.join(', ')) }));
+  if (f.kp && !rows.some((r) => r.pid === 117))
+    rows.push({ pid: 117, name: 'Кинопоиск', logo: logos[117], sub: 'Страница фильма', url: DIRECT[117](f) });
+  if (slug(f)) rows.push({ pid: 'flex', name: 'FLEX', logo: null, sub: 'Страница фильма', url: fill('https://kinoflex.ru/movie/{slug}', f) });
+  const shown = rows.flatMap((r) => [r.pid, r.name.toLowerCase()]);
+  return { rows, more: searchLinks(f, shown) };
 }
