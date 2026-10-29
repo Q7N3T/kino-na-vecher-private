@@ -25,7 +25,7 @@ SITES = {
                  page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o", guess="https://kinoflex.ru/movie/{}",
                  per_run=20000, read=60_000,
                  year=r"<title>[^<]*\b((?:19|20)\d\d)\s+—[^<]*</title>"),
-    "ivi": dict(maps=["https://www.ivi.ru/sitemap.xml"], kids=r"sitemap-watch-",
+    "ivi": dict(maps=["https://www.ivi.ru/sitemap.xml"], kids=r"sitemap-watch-", ver=2,
                 page=r"^(https://www\.ivi\.ru/watch/(?!\d+(?:/|$))[^/?#]+)", by="t",
                 year=r'og:title" content="[^"]*?((?:19|20)\d\d)\)'),
     "start": dict(maps=["https://start.ru/sitemap.xml"], kids=r"/(movies|series|animation)\.xml",
@@ -118,7 +118,9 @@ def check_page(url, site):
     try:
         req = urllib.request.Request(url, headers=UA)
         with urllib.request.urlopen(req, timeout=60) as r:
-            if r.url.rstrip("/") != url.rstrip("/"): return 0
+            # угаданный адрес, переадресованный в другое место, — страницы нет; адрес из карты сайта
+            # кинотеатр вправе переадресовать на свой основной (Иви так и делает)
+            if site.get("guess") and r.url.rstrip("/") != url.rstrip("/"): return 0
             b = r.read(site.get("read", 400_000))
     except urllib.error.HTTPError as e:
         return 0 if e.code in (404, 410) else None
@@ -157,13 +159,15 @@ def cinema_links(films):
         if site.get("guess"):
             pages |= {site["guess"].format(k) for f in films.values() if len(k := key_of(f, site["by"])) >= 3}
         cands = candidates(films, pages, site["by"])
-        # кеш: адрес → [год или 0, когда проверено]; сначала непроверенные, потом самые давние
-        age = lambda u: today - cache[u][1] if u in cache else 10**6
+        # кеш: адрес → [год или 0, когда проверено, версия]; сначала непроверенные, потом самые давние
+        # ver — версия проверки у кинотеатра: поменялась — проверяем его страницы заново
+        ver = site.get("ver", 1)
+        age = lambda u: today - cache[u][1] if u in cache and (cache[u][2:] or [1])[0] == ver else 10**6
         todo = sorted((u for u in cands if age(u) >= RECHECK), key=age, reverse=True)[:site.get("per_run", PER_RUN)]
         with cf.ThreadPoolExecutor(8) as ex:
             for u, y in zip(todo, ex.map(lambda u: check_page(u, site), todo)):
-                if y is not None: cache[u] = [y, today]
-        links = assign(cands, {u: cache[u][0] for u in cands if u in cache})
+                if y is not None: cache[u] = [y, today, ver]
+        links = assign(cands, {u: cache[u][0] for u in cands if age(u) < 10**6})
         for f in films.values():
             ln = f.setdefault("ln", {})
             ln.pop(name, None)
@@ -187,3 +191,5 @@ if __name__ == "__main__":
         got = [(f["t"], f["y"], f["ln"][name]) for f in films.values() if name in f.get("ln", {})]
         print(f"{name}: {len(got)}")
         for row in random.sample(got, min(15, len(got))): print("   ", *row)
+    for t in ("Уэнсдэй", "Сопрано", "Друзья", "Пчеловод", "Крёстный отец"):
+        print(t, [(f["y"], f.get("ln")) for f in films.values() if f["t"] == t])

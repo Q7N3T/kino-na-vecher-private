@@ -107,6 +107,12 @@ class CheckPage(unittest.TestCase):
         self.assertEqual(self.check(urllib.error.HTTPError(self.url, 404, "Not Found", {}, None)), 0)
         self.assertEqual(self.check(FakePage("<title>Flex 2026 — главная</title>", "https://kinoflex.ru/")), 0)
 
+    def test_sitemap_page_may_redirect_to_main_address(self):
+        ivi, url = c.SITES["ivi"], "https://www.ivi.ru/watch/pchelovod"
+        page = FakePage('<meta property="og:title" content="Пчеловод (The Beekeeper, 2024)"/>', "https://www.ivi.ru/watch/511457")
+        with mock.patch.object(c.urllib.request, "urlopen", side_effect=[page]):
+            self.assertEqual(c.check_page(url, ivi), 2024)
+
     def test_site_down_means_try_later(self):
         self.assertIsNone(self.check(urllib.error.HTTPError(self.url, 503, "Unavailable", {}, None)))
         self.assertIsNone(self.check(TimeoutError()))
