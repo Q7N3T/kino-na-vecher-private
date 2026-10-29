@@ -72,3 +72,12 @@ test('свой логотип кинотеатра без логотипа в TM
   assert.equal(rows.find((r) => r.name === 'KION').icon, undefined, 'нет файла — буква, как раньше');
   assert.equal(rows.find((r) => r.name === 'Okko').icon, undefined, 'логотип TMDB остаётся');
 });
+
+test('там не все сезоны — какие есть, в скобках: «Рик и Морти» на FLEX — 8–9', async () => {
+  const { seasonsNote } = await import('../src/lib/partners.js');
+  const rm = { ...f, t: 'Рик и Морти', ln: { flex: 'https://kinoflex.ru/movie/rickandmortysndk' }, lns: { flex: [8, 9] }, wp: null };
+  assert.equal(watchRows(rm, {})[0].sub, 'Страница сериала (сезоны 8–9)');
+  assert.equal(seasonsNote([3]), ' (сезон 3)');
+  assert.equal(seasonsNote([1, 3, 5]), ' (сезоны 1, 3, 5)');
+  assert.equal(seasonsNote(null), '');
+});

@@ -68,6 +68,7 @@ export function load() {
     f.sx = x.x || [];
     f.wp = x.w || null; // где посмотреть в России: {l, s, f, a, r, b}
     f.ln = x.l || null; // страницы фильма в кинотеатрах из их карт сайта: {flex, ivi, start, kion}
+    f.lns = x.q || null; // сезоны на странице кинотеатра, если там не все: {flex: [8, 9]}
     if (!f.crew.length) f.crew = (f.cast || []).map((c) => ({ n: c.n, r: c.r || '', p: '' }));
     // один актёр — одна карточка: IMDb и TMDB бывает пишут роль дважды по-разному («Uryu» / «Uryuu»)
     const seenNames = new Set();

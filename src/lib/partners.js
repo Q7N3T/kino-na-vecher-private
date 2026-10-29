@@ -57,6 +57,14 @@ export function watchLink(f, providerId, name = '') {
 // Один кинотеатр — одна строка со всеми способами.
 // logos — логотипы кинотеатров по номеру, собранные по всей базе; icons — свои логотипы тех, кого
 // нет в TMDB (ключ → файл в public/logos): строка получает icon, его показывают вместо буквы.
+// там не все сезоны — какие есть: « (сезоны 8–9)», « (сезон 3)», « (сезоны 1, 3, 5)»
+export function seasonsNote(ss) {
+  if (!ss?.length) return '';
+  if (ss.length === 1) return ` (сезон ${ss[0]})`;
+  const run = ss.every((n, i) => !i || n === ss[i - 1] + 1);
+  return ` (сезоны ${run ? `${ss[0]}–${ss.at(-1)}` : ss.join(', ')})`;
+}
+
 const KINDS = [['s', 'по подписке'], ['f', 'бесплатно'], ['a', 'бесплатно с рекламой'], ['r', 'аренда'], ['b', 'покупка']];
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
@@ -71,7 +79,7 @@ export function watchRows(f, logos = {}, icons = {}) {
   const rows = [...byPid.values()].map(({ kinds, ...r }) => ({ ...r, sub: cap(kinds.join(', ')) }));
   for (const [k, name] of Object.entries(SITEMAP))
     if (f.ln?.[k] && !rows.some((r) => sitemapKey(r.name) === k))
-      rows.push({ pid: k, name, logo: null, sub: f.k ? 'Страница сериала' : 'Страница фильма', url: f.ln[k] });
+      rows.push({ pid: k, name, logo: null, sub: (f.k ? 'Страница сериала' : 'Страница фильма') + seasonsNote(f.lns?.[k]), url: f.ln[k] });
   for (const r of rows) if (!r.logo && icons[sitemapKey(r.name)]) r.icon = icons[sitemapKey(r.name)];
   return rows;
 }

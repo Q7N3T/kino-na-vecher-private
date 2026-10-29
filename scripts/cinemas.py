@@ -12,6 +12,9 @@ import concurrent.futures as cf, datetime, gzip, json, os, re, sys, time, urllib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, "data", "cinema-cache.json")
+# адреса, которых не угадать и нет в карте сайта (kinoflex.ru/movie/rickandmortysndk): {номер IMDb: {кинотеатр: адрес}};
+# страница всё равно проверяется — открылась ли и какие на ней сезоны, — а год не сверяется: адрес дан вручную
+MANUAL = os.path.join(ROOT, "data", "cinema-links.json")
 UA = {"User-Agent": "Mozilla/5.0 (compatible; kino-na-vecher/1.0; +https://github.com/Q7N3T/kino-na-vecher-private)"}
 PER_RUN = 1500  # сколько страниц проверять за запуск на кинотеатр — остальное в следующие недели
 RECHECK = 30  # через сколько дней проверять страницу снова: фильмы приходят и уходят, страница может стать 404
@@ -48,7 +51,7 @@ SITES = {
                  page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o", strict=True,
                  guess=lambda f: [f"https://kinoflex.ru/movie/{key_of(f, 'o')}"]
                  + ([f"https://kinoflex.ru/movie/{slug(f['t'], FLEX_RU).replace('-', '')}"] if ru(f) else []),
-                 per_run=20000, read=60_000, ver=2,
+                 per_run=20000, read=300_000, ver=2, seasons=r'href="{path}/season-(\d+)"',
                  # «Сериал Уэнсдэй 2022–2025 — смотреть…»: годы — все в заголовке, кроме названия
                  year=r"<title>[^<]*?((?:(?:19|20)\d\d\D{0,3})+)—[^<]*</title>"),
     "ivi": dict(maps=["https://www.ivi.ru/sitemap.xml"], kids=r"sitemap-watch-", ver=2,
@@ -153,22 +156,34 @@ def get(url, limit=None):
     return b.decode("utf-8", "replace")
 
 
-def check_page(url, site):
-    """Годы со страницы; [] — страницы нет (404, переадресация на другую страницу, нет года — пустая
-    заглушка); None — сайт не ответил, проверим в следующий раз."""
+def fetch_page(url, site):
+    """(годы со страницы, сезоны на ней); годы [] — страницы нет (404, переадресация на другую
+    страницу, нет года — пустая заглушка); None — сайт не ответил, проверим в следующий раз.
+    Сезоны — номера сезонов, на которые ссылается страница сериала (у FLEX: /movie/<адрес>/season-8)."""
     try:
         req = urllib.request.Request(url, headers=UA)
         with urllib.request.urlopen(req, timeout=60) as r:
             # угаданный адрес, переадресованный в другое место, — страницы нет; адрес из карты сайта
             # кинотеатр вправе переадресовать на свой основной (Иви так и делает)
-            if site.get("strict") and r.url.rstrip("/") != url.rstrip("/"): return []
+            if site.get("strict") and r.url.rstrip("/") != url.rstrip("/"): return [], []
             b = r.read(site.get("read", 400_000))
     except urllib.error.HTTPError as e:
-        return [] if e.code in (404, 410) else None
+        return ([] if e.code in (404, 410) else None), []
     except Exception:
-        return None
+        return None, []
     if b[:2] == b"\x1f\x8b": b = gzip.decompress(b)
-    return page_years(b.decode("utf-8", "replace"), site["year"])
+    html = b.decode("utf-8", "replace")
+    return page_years(html, site["year"]), page_seasons(html, url, site)
+
+
+def page_seasons(html, url, site):
+    if not site.get("seasons"): return []
+    path = re.escape(re.sub(r"^https?://[^/]+", "", url.rstrip("/")))
+    return sorted({int(n) for n in re.findall(site["seasons"].format(path=path), html)})
+
+
+def check_page(url, site):
+    return fetch_page(url, site)[0]
 
 
 def sitemap(site):
@@ -186,8 +201,17 @@ def sitemap(site):
     return out
 
 
+def manual_links():
+    try: return json.load(open(MANUAL, encoding="utf-8"))
+    except (OSError, ValueError): return {}
+
+
+MANUAL_LINKS = manual_links()
+
+
 def cinema_links(films):
-    """Пишет f["ln"] = {кинотеатр: адрес страницы}. Кинотеатр не ответил — в этот раз без его ссылок."""
+    """Пишет f["ln"] = {кинотеатр: адрес страницы} и f["lns"] = {кинотеатр: [сезоны]}, если там не все.
+    Кинотеатр не ответил — в этот раз без его ссылок."""
     try: cache = json.load(open(CACHE, encoding="utf-8"))
     except (OSError, ValueError): cache = {}
     today = datetime.date.today().toordinal()
@@ -207,33 +231,51 @@ def cinema_links(films):
         # названием не сопоставить); тёзки, угадавшие тот же адрес, разойдутся по году
         for u, f in guesses(films, site):
             if f not in cands.setdefault(u, []): cands[u].append(f)
+        manual = {tid: m[name] for tid, m in MANUAL_LINKS.items() if name in m and tid in films}
+        for tid, u in manual.items():
+            if films[tid] not in cands.setdefault(u, []): cands[u].append(films[tid])
         # кеш: адрес → [годы со страницы, когда проверено, версия]; сначала непроверенные, потом самые давние
         # ver — версия проверки у кинотеатра: поменялась — проверяем его страницы заново
         ver = site.get("ver", 1)
         age = lambda u: today - cache[u][1] if u in cache and (cache[u][2:] or [1])[0] == ver else 10**6
         # среди одинаково давних — сначала популярное: за первые запуски проверяется то, что смотрят
         pop = lambda u: max(f.get("pop", 0) for f in cands[u])
-        todo = sorted((u for u in cands if age(u) >= RECHECK), key=lambda u: (age(u), pop(u)), reverse=True)[:site.get("per_run", PER_RUN)]
+        # у страницы сериала ещё не смотрели, какие на ней сезоны, — тоже проверить
+        no_seasons = lambda u: site.get("seasons") and u in cache and cache[u][0] and len(cache[u]) < 4 and any(f.get("k") for f in cands[u])
+        todo = sorted((u for u in cands if age(u) >= RECHECK or no_seasons(u)), key=lambda u: (age(u), pop(u)), reverse=True)[:site.get("per_run", PER_RUN)]
         stop, done = time.monotonic() + MINUTES * 60, 0
         ex = cf.ThreadPoolExecutor(8)
         try:
-            for u, y in zip(todo, ex.map(lambda u: check_page(u, site), todo)):
-                if y is not None: cache[u] = [y, today, ver]
+            for u, (y, ss) in zip(todo, ex.map(lambda u: fetch_page(u, site), todo)):
+                if y is not None: cache[u] = [y, today, ver, ss]
                 done += 1
                 if time.monotonic() > stop: break  # время вышло — остальное в следующий раз
         finally:
             ex.shutdown(wait=True, cancel_futures=True)
         save(cache)  # после каждого кинотеатра: оборвётся запуск — проверенное не пропадёт
         links = assign(cands, {u: cache[u][0] for u in cands if age(u) < 10**6})
+        for tid, u in manual.items():  # ручной адрес — если страница не пропала (ещё не проверена — верим)
+            if u not in cache or cache[u][0]: links[tid] = u
         for f in films.values():
             ln = f.setdefault("ln", {})
             ln.pop(name, None)
-            if f["id"] in links: ln[name] = links[f["id"]]
+            (f.get("lns") or {}).pop(name, None)
+            if f["id"] in links:
+                u = ln[name] = links[f["id"]]
+                part = part_seasons(f, (cache.get(u) or [])[3:4])
+                if part: f.setdefault("lns", {})[name] = part
         print(f"  {name}: в карте сайта {listed:,}, адресов к проверке {len(cands):,}, "
               f"проверено сейчас {done:,} из {len(todo):,}, ссылок {len(links):,}", file=sys.stderr)
     for f in films.values():
         if not f.get("ln"): f.pop("ln", None)
+        if not f.get("lns"): f.pop("lns", None)
     save(cache)
+
+
+def part_seasons(f, seasons):
+    """Сезоны на странице кинотеатра, если там не все: «Рик и Морти» на FLEX — только 8 и 9."""
+    ss = (seasons or [[]])[0]
+    return ss if f.get("k") and ss and f.get("ss") and len(ss) < f["ss"] else None
 
 
 def save(cache):

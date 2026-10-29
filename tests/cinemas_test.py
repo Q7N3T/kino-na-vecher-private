@@ -177,7 +177,43 @@ class EndToEnd(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(c, "CACHE", os.path.join(d, "cache.json")), \
                 mock.patch.object(c, "SITES", {"flex": c.SITES["flex"]}), \
+                mock.patch.object(c, "MANUAL_LINKS", {}), \
                 mock.patch.object(c, "sitemap", return_value=[]), \
-                mock.patch.object(c, "check_page", side_effect=lambda u, s: live.get(u, [])):
+                mock.patch.object(c, "fetch_page", side_effect=lambda u, s: (live.get(u, []), [])):
             c.cinema_links(films)
         self.assertEqual(rm.get("ln"), {"flex": "https://kinoflex.ru/movie/rikimorti"})
+
+    def run_flex(self, films, live, manual):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(c, "CACHE", os.path.join(d, "cache.json")), \
+                mock.patch.object(c, "SITES", {"flex": c.SITES["flex"]}), \
+                mock.patch.object(c, "MANUAL_LINKS", manual), \
+                mock.patch.object(c, "sitemap", return_value=[]), \
+                mock.patch.object(c, "fetch_page", side_effect=lambda u, s: live.get(u, ([], []))):
+            c.cinema_links(films)
+
+    def test_manual_address_without_year_check_and_partial_seasons_noted(self):
+        # kinoflex.ru/movie/rickandmortysndk — не угадать; на FLEX только 8 и 9 сезоны из 9, год на странице — 2025
+        rm = {"id": "tt2861424", "t": "Рик и Морти", "o": "Rick and Morty", "y": 2013, "k": "s", "ss": 9}
+        u = "https://kinoflex.ru/movie/rickandmortysndk"
+        self.run_flex({"tt2861424": rm}, {u: ([2025], [8, 9])}, {"tt2861424": {"flex": u}})
+        self.assertEqual(rm["ln"], {"flex": u})
+        self.assertEqual(rm["lns"], {"flex": [8, 9]})
+
+    def test_all_seasons_no_note_and_manual_404_dropped(self):
+        w = {"id": "tt1", "t": "Уэнздей", "o": "Wednesday", "y": 2022, "k": "s", "ss": 2}
+        u = "https://kinoflex.ru/movie/wednesday"
+        self.run_flex({"tt1": w}, {u: ([2022], [1, 2])}, {})
+        self.assertEqual(w["ln"], {"flex": u})
+        self.assertNotIn("lns", w)
+        gone = {"id": "tt2", "t": "Тест", "o": "Test", "y": 2000, "k": "s", "ss": 3}
+        self.run_flex({"tt2": gone}, {}, {"tt2": {"flex": "https://kinoflex.ru/movie/gone"}})
+        self.assertNotIn("ln", gone, "ручной адрес, который стал 404, — без ссылки")
+
+
+class Seasons(unittest.TestCase):
+    def test_seasons_from_flex_page(self):
+        html = '<a href="/movie/rickandmortysndk/season-8">8</a><a href="/movie/rickandmortysndk/season-9">9</a><a href="/movie/other/season-1">'
+        self.assertEqual(c.page_seasons(html, "https://kinoflex.ru/movie/rickandmortysndk", c.SITES["flex"]), [8, 9])
+        self.assertEqual(c.page_seasons(html, "https://kion.ru/serial/x", c.SITES["kion"]), [], "у KION сезоны не читаем")

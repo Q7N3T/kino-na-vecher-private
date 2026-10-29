@@ -457,7 +457,7 @@ def write(films):
         f["genres"] = [GENRES_RU.get(x, x.lower()) for x in f.pop("g")]
         if f["o"] == f["t"]: f.pop("o")
         f.pop("hs", None)
-        extra = {k: v for k, v in (("s", f.pop("syn", None)), ("c", f.pop("cr", None)), ("x", f.pop("sx", None)), ("w", f.pop("wp", None)), ("l", f.pop("ln", None))) if v}
+        extra = {k: v for k, v in (("s", f.pop("syn", None)), ("c", f.pop("cr", None)), ("x", f.pop("sx", None)), ("w", f.pop("wp", None)), ("l", f.pop("ln", None)), ("q", f.pop("lns", None))) if v}
         if extra:
             parts[syn_part(f["id"])][f["id"]] = extra
             f["hs"] = 1
@@ -491,6 +491,7 @@ def load_existing():
         if x and x.get("w"): f["wp"] = x["w"]
         if x and x.get("x"): f["sx"] = x["x"]
         if x and x.get("l"): f["ln"] = x["l"]
+        if x and x.get("q"): f["lns"] = x["q"]
         films[f["id"]] = f
     return films
 
