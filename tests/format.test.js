@@ -97,10 +97,9 @@ test('кинотеатр на карточке: логотип, название
   assert.ok(!cardHTML(movie, '/').includes('card-w'), 'нет данных — нет строки');
 });
 
-test('фото: TMDB — по шаблону размеров, Commons — полным адресом, квадратом с лицом', async () => {
+test('фото: TMDB — через wsrv по шаблону размеров, Commons — напрямую (wsrv его не открывает)', async () => {
   const { tmdbImg } = await import('../src/lib/format.js');
   assert.ok(tmdbImg('/abc.jpg', 160, 'w185').includes(encodeURIComponent('https://image.tmdb.org/t/p/w185/abc.jpg')));
-  const c = tmdbImg('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/400px-Example.jpg', 160);
-  assert.ok(c.includes(encodeURIComponent('https://upload.wikimedia.org/')) && !c.includes('image.tmdb.org'));
-  assert.ok(c.includes('h=160') && c.includes('fit=cover'));
+  const u = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/500px-Example.jpg';
+  assert.equal(tmdbImg(u, 160), u);
 });
