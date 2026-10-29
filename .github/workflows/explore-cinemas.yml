@@ -1,0 +1,34 @@
+# Разведка: открываются ли сайты кинотеатров из GitHub и есть ли у них карта сайта со страницами фильмов.
+# Запускается вручную; ничего не меняет в репозитории — только пишет находки в лог.
+name: Разведка кинотеатров
+
+on:
+  workflow_dispatch:
+
+jobs:
+  explore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Карты сайтов
+        run: |
+          UA="Mozilla/5.0 (compatible; kino-na-vecher/1.0; +https://github.com/Q7N3T/kino-na-vecher-private)"
+          for host in okko.tv www.ivi.ru wink.ru kion.ru start.ru premier.one www.amediateka.ru more.tv kinoflex.ru www.kinopoisk.ru; do
+            echo "::group::$host"
+            code=$(curl -s -m 20 -A "$UA" -o /tmp/robots.txt -w '%{http_code}' "https://$host/robots.txt") || code=ERR
+            echo "robots.txt: $code"
+            grep -i '^sitemap' /tmp/robots.txt | head -5 || true
+            for sm in $(grep -i '^sitemap' /tmp/robots.txt | head -3 | awk '{print $2}' | tr -d '\r'); do
+              c=$(curl -s -m 30 -A "$UA" --compressed -o /tmp/sm "$sm" -w '%{http_code} %{size_download}') || c=ERR
+              case "$sm" in *.gz) gunzip -c /tmp/sm > /tmp/sm.txt 2>/dev/null || cp /tmp/sm /tmp/sm.txt ;; *) cp /tmp/sm /tmp/sm.txt ;; esac
+              echo "$sm -> $c, ссылок: $(grep -o '<loc>' /tmp/sm.txt | wc -l)"
+              grep -o '<loc>[^<]*</loc>' /tmp/sm.txt | head -8 | sed 's/<[^>]*>//g'
+            done
+            echo "::endgroup::"
+          done
+      - name: Примеры страниц
+        run: |
+          UA="Mozilla/5.0 (compatible; kino-na-vecher/1.0)"
+          for u in https://kinoflex.ru/movie/thesopranos https://kinoflex.ru/movie/thedarkknight https://kinoflex.ru/movie/friends https://www.kinopoisk.ru/film/79848/; do
+            echo "$u -> $(curl -s -m 20 -A "$UA" -o /dev/null -w '%{http_code} %{redirect_url}' "$u")"
+          done
