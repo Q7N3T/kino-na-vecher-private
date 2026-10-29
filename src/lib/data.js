@@ -2,7 +2,6 @@
 // один раз за сборку и раздаёт страницам.
 import fs from 'node:fs';
 import path from 'node:path';
-import { providerName } from './partners.js';
 
 // сборка запускается из корня проекта (npm run build); путь от файла после сборки указывал бы в dist/
 const ROOT = process.cwd();
@@ -27,13 +26,6 @@ export function actorSearchRow(a) {
     ids: [...fs].sort((x, y) => y.pp - x.pp).slice(0, 24).map((f) => +f.id.slice(2)),
     total: fs.length, y0: Math.min(...ys), y1: Math.max(...ys), best: best ? +best.id.slice(2) : 0,
   };
-}
-
-// Где смотреть сразу — для карточки: первый кинотеатр по подписке, бесплатно или с рекламой
-// (аренда и покупка — на странице тайтла). [название, логотип, вид] или 0.
-export function watchNow(wp) {
-  const kind = wp && ['s', 'f', 'a'].find((k) => wp[k]?.length);
-  return kind ? [providerName(wp[kind][0][0], wp[kind][0][1]), wp[kind][0][2], kind] : 0;
 }
 
 let cache;
@@ -76,7 +68,6 @@ export function load() {
     f.sx = x.x || [];
     f.wp = x.w || null; // где посмотреть в России: {l, s, f, a, r, b}
     f.ln = x.l || null; // страницы фильма в кинотеатрах из их карт сайта: {flex, ivi, start, kion}
-    f.w = watchNow(f.wp);
     if (!f.crew.length) f.crew = (f.cast || []).map((c) => ({ n: c.n, r: c.r || '', p: '' }));
     // один актёр — одна карточка: IMDb и TMDB бывает пишут роль дважды по-разному («Uryu» / «Uryuu»)
     const seenNames = new Set();
@@ -167,7 +158,7 @@ export function collection(c, limit = 120) {
 }
 
 // Лёгкий индекс для браузера: подбор, каталог, поиск, избранное. Массивы вместо объектов — так втрое меньше.
-export const INDEX_FIELDS = ['id', 'slug', 't', 'o', 'y', 'k', 'min', 'm', 'genres', 'imdb', 'v', 'pp', 'p', 'ss', 'ye', 'ann', 'ts', 'la', 'ep', 'd', 'w'];
+export const INDEX_FIELDS = ['id', 'slug', 't', 'o', 'y', 'k', 'min', 'm', 'genres', 'imdb', 'v', 'pp', 'p', 'ss', 'ye', 'ann', 'ts', 'la', 'ep', 'd'];
 export function indexRows() {
   return load().films.map((f) => INDEX_FIELDS.map((k) => (k === 'pp' ? Math.round(f.pp * 10) / 10 : f[k] ?? 0)));
 }

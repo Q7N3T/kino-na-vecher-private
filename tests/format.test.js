@@ -89,12 +89,8 @@ test('заглушка постера не читается скринридер
   assert.match(cardHTML(movie, '/'), /<span class="ph" aria-hidden="true">/);
 });
 
-test('кинотеатр на карточке: логотип, название и способ — для скринридера', () => {
-  const html = cardHTML({ ...movie, w: ['Okko', '/okko.png', 's'] }, '/');
-  assert.ok(text(html).includes('Okko · по подписке'));
-  assert.ok(html.includes('class="card-w"'));
-  assert.ok(text(cardHTML({ ...movie, w: ['Иви', '/ivi.png', 'f'] }, '/')).includes('Иви · бесплатно'));
-  assert.ok(!cardHTML(movie, '/').includes('card-w'), 'нет данных — нет строки');
+test('на карточке — без значка кинотеатра: где смотреть — на странице тайтла', () => {
+  assert.ok(!cardHTML({ ...movie, w: ['Okko', '/okko.png', 's'] }, '/').includes('okko'));
 });
 
 test('фото: TMDB — через wsrv по шаблону размеров, Commons — напрямую (wsrv его не открывает)', async () => {

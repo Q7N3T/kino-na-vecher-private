@@ -123,7 +123,6 @@ export function timeLine(f, time = 0) {
   return e ? `<span class="fin"> · ${e.text} <b data-end="${e.min}"></b></span>` : ` · серия ${dur(f.min)}`;
 }
 
-const WATCH_NOW = { s: 'по подписке', f: 'бесплатно', a: 'бесплатно с рекламой' };
 
 // Карточка — одна разметка для страниц, собранных заранее, и для карточек, которые рисует браузер.
 // На постере — одна метка: почему тайтл в подборке (why); статус сериала — в мелкой строке.
@@ -140,6 +139,6 @@ export function cardHTML(f, base, { i = 0, why = '', time = 0 } = {}) {
   <div class="poster" style="--h:${hue(f.id)}">${img}<span class="ph" aria-hidden="true">${esc(f.t)}</span>${why ? `<span class="why">${why}</span>` : ''}</div>
   <span class="card-t">${esc(f.t)}</span>
   <span class="card-m">${meta}</span>
-  <span class="card-e">IMDb ${f.imdb.toFixed(1)}${timeLine(f, time)}${f.w ? `<span class="card-w">${f.w[1] ? `<img src="${tmdbImg(f.w[1], 32, 'w92')}" alt="" width="16" height="16" loading="lazy" onerror="knvImg(this)">` : ''}<span class="sr">${esc(f.w[0])} · ${WATCH_NOW[f.w[2]]}</span></span>` : ''}</span>
+  <span class="card-e">IMDb ${f.imdb.toFixed(1)}${timeLine(f, time)}</span>
 </a>`;
 }
