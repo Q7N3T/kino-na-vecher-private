@@ -9,7 +9,7 @@ import hashlib, json, os, re, sys, time, urllib.error, urllib.parse, urllib.requ
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PEOPLE = os.path.join(ROOT, "data", ".imdb", "people.json")
 UA = {"User-Agent": "kino-na-vecher/1.0 (https://github.com/Q7N3T/kino-na-vecher-private)"}
-WIDTH = 400  # px по ширине: хватает на круг 200 px на экранах с двойной плотностью
+WIDTH = 500  # px по ширине: Commons отдаёт уменьшенные копии только стандартных размеров (400 — ошибка 400, 500 — есть)
 
 
 def query(ids):
