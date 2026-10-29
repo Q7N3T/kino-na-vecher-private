@@ -43,7 +43,8 @@ def slug(title, scheme):
 
 ru = lambda f: bool(re.search(r"[а-яё]", f["t"], re.I))
 SITES = {
-    "flex": dict(maps=["https://kinoflex.ru/sitemap-film.xml", "https://kinoflex.ru/sitemap-serial.xml"],
+    # вся карта сайта FLEX, а не только фильмы и сериалы: мультсериалы, аниме и т. п. — в своих разделах
+    "flex": dict(maps=["https://kinoflex.ru/sitemap.xml"],
                  page=r"^(https://kinoflex\.ru/movie/[^/?#]+)", by="o", strict=True,
                  guess=lambda f: [f"https://kinoflex.ru/movie/{key_of(f, 'o')}"]
                  + ([f"https://kinoflex.ru/movie/{slug(f['t'], FLEX_RU).replace('-', '')}"] if ru(f) else []),
@@ -258,7 +259,12 @@ if __name__ == "__main__":
     if sys.argv[1:]:  # python3 scripts/cinemas.py <адрес>… — разобрать отдельные адреса, базу не трогать;
         # find:<слово> — найти адреса со словом в картах сайта кинотеатров
         for u in sys.argv[1:]:
-            if u.startswith("find:"):
+            if u == "maps":  # какие разделы в картах сайта
+                for name, site in SITES.items():
+                    for m in site["maps"]:
+                        try: print(name, m, "→", *re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", get(m))[:40])
+                        except Exception as e: print(name, m, "не открылась:", e)
+            elif u.startswith("find:"):
                 for name, site in SITES.items():
                     try: hits = sorted(p for p in title_pages(sitemap(site), site["page"]) if u[5:].lower() in p.lower())
                     except Exception as e: hits = [f"карта сайта не открылась: {e}"]
