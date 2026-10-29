@@ -1,0 +1,67 @@
+# Логотипы кинотеатров, которых нет в данных TMDB (FLEX, Иви, Start, KION): берёт с их сайтов
+# иконку для iPhone (apple-touch-icon) или самую большую иконку сайта и кладёт в public/logos/.
+# Запускается вручную, когда нужен новый логотип; коммитит только public/logos/.
+name: Логотипы кинотеатров
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  logos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Скачать иконки
+        shell: python3 {0}
+        run: |
+          import os, re, urllib.parse, urllib.request
+          UA = {"User-Agent": "Mozilla/5.0 (compatible; kino-na-vecher/1.0; +https://github.com/Q7N3T/kino-na-vecher-private)"}
+          SITES = {"flex": "https://kinoflex.ru/", "ivi": "https://www.ivi.ru/", "start": "https://start.ru/", "kion": "https://kion.ru/",
+                   "premier": "https://premier.one/", "okko": "https://okko.tv/", "wink": "https://wink.ru/", "amediateka": "https://www.amediateka.ru/"}
+          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=30)
+          os.makedirs("public/logos", exist_ok=True)
+          for key, home in SITES.items():
+              try: html = get(home).read(600_000).decode("utf-8", "replace")
+              except Exception as e: print(key, "сайт не открылся:", e); continue
+              icons = []
+              for tag in re.findall(r"<link\b[^>]*>", html, re.I):
+                  rel = (re.search(r'rel="([^"]*)"', tag) or [None, ""])[1].lower()
+                  href = (re.search(r'href="([^"]*)"', tag) or [None, ""])[1]
+                  if "icon" not in rel or not href: continue
+                  size = max([int(s) for s in re.findall(r"(\d+)x\d+", tag)] or [0])
+                  score = (2 if "apple-touch" in rel else 1 if href.endswith(".png") else 0, size)
+                  icons.append((score, urllib.parse.urljoin(home, href.replace("&amp;", "&"))))
+              icons += [((0, 0), urllib.parse.urljoin(home, "/apple-touch-icon.png")), ((0, -1), urllib.parse.urljoin(home, "/favicon.ico"))]
+              print(key, "кандидаты:", *[f"{s} {u}" for s, u in sorted(icons, reverse=True)[:6]], sep="\n   ")
+              for _, u in sorted(icons, reverse=True):
+                  try:
+                      r = get(u); body, ctype = r.read(), r.headers.get("Content-Type", "")
+                  except Exception as e:
+                      print("   нет:", u, e); continue
+                  ext = "svg" if "svg" in ctype or u.split("?")[0].endswith(".svg") else "ico" if "icon" in ctype or u.split("?")[0].endswith(".ico") else "png" if "png" in ctype else "jpg" if "jpeg" in ctype else "webp" if "webp" in ctype else None
+                  if not ext or len(body) < 100: print("   не картинка:", u, ctype, len(body)); continue
+                  for old in os.listdir("public/logos"):
+                      if old.startswith(key + "."): os.remove(os.path.join("public/logos", old))
+                  open(f"public/logos/{key}.{ext}", "wb").write(body)
+                  print(f"   → public/logos/{key}.{ext} ({len(body):,} байт) из {u}")
+                  break
+      - name: Разведка Premier — как устроены адреса страниц тайтлов
+        run: |
+          UA="Mozilla/5.0 (compatible; kino-na-vecher/1.0)"
+          for u in https://premier.one/show/slovo-pacana https://premier.one/show/slovo-patsana https://premier.one/show/kuhnya https://premier.one/show/fizruk https://premier.one/movie/kholop https://premier.one/show/holop; do
+            echo "$u -> $(curl -s -m 20 -A "$UA" -o /tmp/p.html -w '%{http_code} %{url_effective}' -L "$u") $(grep -o '<title>[^<]*</title>' /tmp/p.html | head -1)"
+          done
+          curl -s -m 20 -A "$UA" https://premier.one/series | grep -o 'href="/show/[^"]*"' | sort -u | head -15
+      - name: Закоммитить логотипы
+        run: |
+          git add public/logos
+          if git diff --cached --quiet; then echo "Логотипы не изменились"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Логотипы кинотеатров с их сайтов"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push && exit 0; sleep $((i * 10)); done
+          exit 1
